@@ -36,12 +36,12 @@
 #define		SENSOR_NOTPRESENT		0
 
 #define		PRC1_MAILBOX_ID		0
-#define		PRC1_MAILBOX_LEN	64
+#define		PRC1_MAILBOX_LEN	128
 #define		PRC2_MAILBOX_ID		0
-#define		PRC2_MAILBOX_LEN	64
+#define		PRC2_MAILBOX_LEN	128
 #define		SENSORS_TX_LEN		32
 #define		SAMPLES_LEN			32
-#define		SENSORS_RX_LEN		32
+#define		SENSORS_RX_LEN		64
 #define		SENSORS_RX_TIMEOUT	25
 #define		SENSORS_RX_DISABLE	4
 
@@ -75,6 +75,8 @@
 
 #define		SENSORS_BROADCAST		0xff
 #define		SENSORS_RESERVED		0x00
+
+#define		INVALID_UART			0xff
 
 
 typedef struct
@@ -113,6 +115,7 @@ typedef struct
 	/* downloader */
 	int		 		dwnld_index;
 	uint32_t 		dwnld_line_selector;
+	uint32_t 		dwnld_program_selector;
 	uint32_t 		dwnld_sensor_selector;
 	uint32_t 		dwnld_datalen;
 	uint8_t 		dwnld_acknak;
@@ -151,11 +154,12 @@ typedef struct
 
 typedef struct
 {
-	uint16_t 		sensor_calibration[SENSORS_LINE][SENSORS_NUM];
-	uint16_t 		sensor_conductivity[SENSORS_LINE][SENSORS_NUM];
-	uint16_t 		sensor_da_outval[SENSORS_LINE][SENSORS_NUM];
-	uint16_t 		sensor_temperature[SENSORS_LINE][SENSORS_NUM];
 	uint16_t 		sensor_type[SENSORS_LINE][SENSORS_NUM];
+	uint16_t 		sensor_conductivity[SENSORS_LINE][SENSORS_NUM];
+	uint16_t 		sensor_scale_factor[SENSORS_LINE][SENSORS_NUM];
+	uint16_t 		sensor_da_outval[SENSORS_LINE][SENSORS_NUM];
+	uint16_t 		sensor_calibration[SENSORS_LINE][SENSORS_NUM];
+	uint16_t 		sensor_temperature[SENSORS_LINE][SENSORS_NUM];
 }MembraneData_TypeDef;
 
 /* sensors_status */

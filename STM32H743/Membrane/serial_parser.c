@@ -68,7 +68,7 @@ uint8_t line_to_uart(uint8_t line)
 		return HW_UART7;
 	if (line == 3 )
 		return HW_UART8;
-	return 255;
+	return INVALID_UART;
 }
 
 uint8_t sensors_serial_parser(uint32_t wakeup,uint32_t flags)
@@ -104,11 +104,12 @@ uint8_t		rx_line_len;
 			MembraneSystem.sensor_map[line][sensor] = MembraneSystem.sensor_rxbuf[line][3];
 			break;
 		case SENSORS_GETACQ_COMMAND	:
-			MembraneData.sensor_type[line][sensor] 		 =  MembraneSystem.sensor_rxbuf[line][3];
-			MembraneData.sensor_calibration[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][5]  << 8) | MembraneSystem.sensor_rxbuf[line][6];
-			MembraneData.sensor_conductivity[line][sensor] = (MembraneSystem.sensor_rxbuf[line][8]  << 8) | MembraneSystem.sensor_rxbuf[line][9];
+			MembraneData.sensor_type[line][sensor] 		   =  MembraneSystem.sensor_rxbuf[line][3];
+			MembraneData.sensor_conductivity[line][sensor] = (MembraneSystem.sensor_rxbuf[line][5]  << 8) | MembraneSystem.sensor_rxbuf[line][6];
+			MembraneData.sensor_scale_factor[line][sensor] = (MembraneSystem.sensor_rxbuf[line][8]  << 8) | MembraneSystem.sensor_rxbuf[line][9];
 			MembraneData.sensor_da_outval[line][sensor]    = (MembraneSystem.sensor_rxbuf[line][11] << 8) | MembraneSystem.sensor_rxbuf[line][12];
-			MembraneData.sensor_temperature[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
+			MembraneData.sensor_calibration[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
+			MembraneData.sensor_temperature[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][17] << 8) | MembraneSystem.sensor_rxbuf[line][18];
 			break;
 		}
 	}

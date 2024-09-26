@@ -75,7 +75,7 @@ uint8_t tx_update_packet(uint8_t selected_uart)
 		else
 		{
 			MembraneSystem.sensors_status &= ~SENSORS_ON_UPDATE;
-			sprintf((char *)MembraneSystem.prc2_mailbox,"<FLASHED>");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Transfer Done");
 			mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,strlen((char *)MembraneSystem.prc2_mailbox));
 			return 0;
 		}
@@ -120,6 +120,52 @@ uint8_t sensors_discovery(void)
 	return 1;
 }
 
+uint8_t sensors_send_write_command_to_sensors(uint8_t line,uint8_t sensor)
+{
+uint8_t	selected_uart;
+
+	if ( (sensor < MAX_SENSORS) || (sensor == SENSORS_BROADCAST))
+	{
+		MembraneSystem.sensor_scratchbuf[0] = 0;
+		MembraneSystem.sensor_scratchbuf[1] = '<';
+		MembraneSystem.sensor_scratchbuf[2] = SENSORS_FLASH_WRITE;
+		MembraneSystem.sensor_scratchbuf[3] = sensor;
+		MembraneSystem.sensor_scratchbuf[4] = '>';
+		MembraneSystem.sensor_scratchbuf[5] = 0;
+
+		if ( sensor != SENSORS_BROADCAST)
+		{
+			selected_uart = line_to_uart(line);
+			if ( selected_uart == INVALID_UART)
+				return 1;
+			switch ( selected_uart )
+			{
+			case HW_UART4:
+				hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
+				break;
+			case HW_UART5:
+				hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
+				break;
+			case HW_UART7:
+				hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
+				break;
+			case HW_UART8:
+				hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
+				break;
+			}
+		}
+		else
+		{
+			hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
+			hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
+			hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
+			hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
+		}
+		return 0;
+	}
+	return 1;
+}
+
 void sensors_discovery_reset(void)
 {
 	MembraneSystem.sensor_map_line_index = MembraneSystem.sensor_map_sensor_index = 0;
@@ -157,10 +203,11 @@ void check_sensors_flash(uint8_t line, uint8_t sensor)
 	serial_send(MembraneSystem.sensor_scratchbuf,line,sensor);
 }
 
+char	tmp_buf[64];
 void parse_mbx_in(void)
 {
 uint32_t	pnum,mbprc2len;
-uint8_t		sensorsmap_line,i;
+uint8_t		line,sensor,i;
 int			sensor_data_index,line_data_index;
 
 	bzero((char *)prc1_mbx_rxbuf,PRC1_MAILBOX_LEN);
@@ -173,11 +220,11 @@ int			sensor_data_index,line_data_index;
 	{
 	case	SENSORS_POWER_ON :	/* P : Power on */
 		power_on_serials();
-		sprintf((char *)MembraneSystem.prc2_mailbox,"Power ON\n\r");
+		sprintf((char *)MembraneSystem.prc2_mailbox,"Power ON");
 		break;
 	case	SENSORS_POWER_OFF :	/* O : Power off */
 		power_off_serials();
-		sprintf((char *)MembraneSystem.prc2_mailbox,"Power OFF\n\r");
+		sprintf((char *)MembraneSystem.prc2_mailbox,"Power OFF");
 		break;
 	case	SENSORS_FLASH_CHECKREQ:	// C : Sensors flash check request
 		pnum = sscanf((char *)prc1_mbx_rxbuf,"%c %d %d",(char *)SENSORS_FLASH_CHECKREQ,(int *)&MembraneSystem.line_selector,(int *)&MembraneSystem.sensor_selector);
@@ -198,57 +245,57 @@ int			sensor_data_index,line_data_index;
 		}
 		break;
 	case	SENSORS_FLASH_WRITE	: /* W : Send Write_data command */
-		pnum = sscanf((char *)prc1_mbx_rxbuf,"W %d",(int *)&MembraneSystem.dwnld_line_selector);
-		if ( pnum == 1 )
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"W %d %d",(int *)&line,(int *)&sensor);
+		if ( pnum == 2 )
+		{
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Writing");
 			MembraneSystem.sensors_status &= ~SENSORS_ON_UPDATE;
+			sensors_send_write_command_to_sensors(line,sensor);
+		}
 		break;
 	case	CONCENTRATOR_FLASH_GETINFO	: /* Get stored file info */
 		if ( read_code(MembraneSystem.parameter1_from_usb) != 0 )
 		{
 			read_summary(MembraneSystem.parameter1_from_usb);
-			sprintf((char *)MembraneSystem.prc2_mailbox,"<%c %d %s %s>",
+			sprintf((char *)MembraneSystem.prc2_mailbox,"%c %d %s %s",
 					MembraneSystem.command_from_usb,
 					(int )MembraneSystem.parameter1_from_usb,
 					(char *)MembraneSystem.flash_app_name,
 					(char *)MembraneSystem.flash_app_version);
 		}
 		else
-			sprintf((char *)MembraneSystem.prc2_mailbox,"<Read flash error>");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Read flash error");
 		break;
 	case	SENSORS_DISCOVERY_COMMAND	: /* Z : discovery command */
 		if (( MembraneSystem.sensors_status & SENSORS_DISCOVERY ) == SENSORS_DISCOVERY )
-			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery in progress\n\r");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery in progress");
 		else
 		{
 			sensors_discovery_reset();
-			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery From USB\n\r");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery From USB");
 			discovery_time = 0;
 		}
 		break;
 	case	SENSORS_GETMAP_COMMAND	: /* M : Get sensors map after a discovery command */
 		if (( MembraneSystem.sensors_status & SENSORS_DISCOVERY ) == SENSORS_DISCOVERY )
-			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery in progress\n\r");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery in progress");
 		else
 		{
-			pnum = sscanf((char *)prc1_mbx_rxbuf,"M %d",(int *)&sensorsmap_line);
+			pnum = sscanf((char *)prc1_mbx_rxbuf,"M %d",(int *)&sensor);
 			if ( pnum == 1 )
 			{
-				if ( sensorsmap_line <= MAX_LINES)
+				if ( sensor <= MAX_LINES)
 				{
-					sensorsmap_line -= 1;
-					MembraneSystem.prc2_mailbox[0] = '<';
-					MembraneSystem.prc2_mailbox[1] = 'M';
-					MembraneSystem.prc2_mailbox[2] = ' ';
-					MembraneSystem.prc2_mailbox[3] = sensorsmap_line+0x30;
-					MembraneSystem.prc2_mailbox[4] = ' ';
+					sensor -= 1;
+					MembraneSystem.prc2_mailbox[0] = 'M';
+					MembraneSystem.prc2_mailbox[1] = ' ';
+					MembraneSystem.prc2_mailbox[2] = sensor+0x31;
+					MembraneSystem.prc2_mailbox[3] = ' ';
 					for(i=0;i<MAX_SENSORS;i++)
 					{
-						MembraneSystem.prc2_mailbox[i+3] =  MembraneSystem.sensor_map[sensorsmap_line][i] + 0x30;
+						MembraneSystem.prc2_mailbox[i+4] =  MembraneSystem.sensor_map[sensor][i] + 0x30;
 					}
-					MembraneSystem.prc2_mailbox[i]='>';
-					MembraneSystem.prc2_mailbox[i+1] = '\r';
-					MembraneSystem.prc2_mailbox[i+2] = '\n';
-					MembraneSystem.prc2_mailbox[i+3] = 0;
+					MembraneSystem.prc2_mailbox[i] = 0;
 				}
 			}
 		}
@@ -268,37 +315,54 @@ int			sensor_data_index,line_data_index;
 			if (( line_data_index < SENSORS_LINE ) && ( sensor_data_index < SENSORS_NUM ))
 			{
 				bzero((char *)MembraneSystem.prc2_mailbox,PRC2_MAILBOX_LEN);
-				sprintf((char *)MembraneSystem.prc2_mailbox,"<A %d %d %d %d %d %d %d>\r\n",
+#define ASDF
+#ifdef ASDF
+				sprintf((char *)MembraneSystem.prc2_mailbox,"DSC %1d Sensor %2d Type %2d Readout %4d Scale Factor %4d DAC %d Calibration %4d Temperature %2d",
 						line_data_index+1,
 						sensor_data_index+1,
 						MembraneData.sensor_type[line_data_index][sensor_data_index],
-						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
 						MembraneData.sensor_conductivity[line_data_index][sensor_data_index],
+						MembraneData.sensor_scale_factor[line_data_index][sensor_data_index],
 						MembraneData.sensor_da_outval[line_data_index][sensor_data_index],
+						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
 						MembraneData.sensor_temperature[line_data_index][sensor_data_index]
 						);
+#else
+				sprintf((char *)MembraneSystem.prc2_mailbox,"DSC %1d Sensor %2d Type %2d Readout %4d",
+						line_data_index+1,
+						sensor_data_index+1,
+						MembraneData.sensor_type[line_data_index][sensor_data_index],
+						MembraneData.sensor_conductivity[line_data_index][sensor_data_index]);
+				sprintf(tmp_buf," Scale Factor %4d DAC %d Calibration %4d Temperature %2d",
+						MembraneData.sensor_scale_factor[line_data_index][sensor_data_index],
+						MembraneData.sensor_da_outval[line_data_index][sensor_data_index],
+						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
+						MembraneData.sensor_temperature[line_data_index][sensor_data_index]
+						);
+				strcat((char *)MembraneSystem.prc2_mailbox,tmp_buf);
+#endif
 			}
 			else
 			{
-				sprintf((char *)MembraneSystem.prc2_mailbox,"<Param error in get acq command>\r\n");
+				sprintf((char *)MembraneSystem.prc2_mailbox,"Param error in get acq command");
 			}
 		}
 		break;
 	case	SENSORS_SCAN_COMMAND	: /* S : Scan all sensors */
 		if (( MembraneSystem.sensors_status & SENSORS_RUN) == SENSORS_RUN)
 		{
-			sprintf((char *)MembraneSystem.prc2_mailbox,"<S : scan in progress>\r\n");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Scan in progress");
 		}
 		else
 		{
 			MembraneSystem.line_selector   = 0;
 			MembraneSystem.sensor_selector = 0;
 			MembraneSystem.sensors_status |= SENSORS_RUN;
-			sprintf((char *)MembraneSystem.prc2_mailbox,"<S : sensors scan start>\r\n");
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Scan start");
 		}
 		break;
 	default:
-		sprintf((char *)MembraneSystem.prc2_mailbox,"<ERROR : UNKNOWN COMMAND>\r\n");
+		sprintf((char *)MembraneSystem.prc2_mailbox,"ERROR : UNKNOWN COMMAND");
 		break;
 	}
 	mbprc2len =  strlen((char *)MembraneSystem.prc2_mailbox);
@@ -365,7 +429,7 @@ uint8_t		selected_uart;
 
 				if (( MembraneSystem.sensors_status & SENSORS_ON_UPDATE ) == SENSORS_ON_UPDATE )
 				{
-					selected_uart = line_to_uart(MembraneSystem.dwnld_line_selector);
+					selected_uart = line_to_uart(MembraneSystem.dwnld_line_selector-1);
 					if ( tx_update_packet(selected_uart) == 0 ) // update finished
 					{
 						MembraneSystem.sensors_status |= SENSORS_READY_TO_FLASH;

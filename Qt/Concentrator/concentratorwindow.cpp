@@ -343,7 +343,7 @@ void ConcentratorWindow::on_GetData_pushButton_clicked()
         sensor = ui->GetDataSensor_comboBox->currentText().toUtf8();
 
         Command = "<A "+line+" "+sensor+">";
-        qDebug()<<Command;
+        //qDebug()<<Command;
         if ( (reply = serial_tx(Command)) != "1" )
         {
             qDebug()<<reply;
@@ -409,5 +409,12 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
         {
             //qDebug()<<reply;
         }
+        Command = "<A 1 5>";
+        if ( (reply = serial_tx(Command)) != "1" )
+        {
+            qDebug()<<reply;
+        }
+
+
     }
 }
