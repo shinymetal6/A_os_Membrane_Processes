@@ -53,6 +53,8 @@ private slots:
 
     void on_SpecialString_pushButton_clicked();
 
+    void on_RequestInfo_pushButton_clicked();
+
 private:
     Ui::ConcentratorWindow *ui;
 

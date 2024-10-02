@@ -103,6 +103,21 @@ uint8_t		i;
 			MembraneData.sensor_calibration[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
 			MembraneData.sensor_temperature[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][17] << 8) | MembraneSystem.sensor_rxbuf[line][18];
 			break;
+		case SENSORS_FLASH_GETINFO :
+			MembraneSystem.prc2_mailbox[0] = SENSORS_FLASH_GETINFO;
+			MembraneSystem.prc2_mailbox[1] = ' ';
+
+			MembraneSystem.prc2_mailbox[2] = MembraneSystem.sensor_rxbuf[line][2] + 0x30;
+			MembraneSystem.prc2_mailbox[3] = ' ';
+			for(i=4;i<PRC2_MAILBOX_LEN;i++)
+			{
+				if ( MembraneSystem.sensor_rxbuf[line][i] == '>' )
+					break;
+				else
+					MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_rxbuf[line][i];
+			}
+			mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,i-1);
+			break;
 		default : return 1;
 		}
 	}

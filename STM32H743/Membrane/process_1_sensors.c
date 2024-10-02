@@ -199,6 +199,22 @@ void sensors_go_special(uint8_t special)
 	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,7);
 }
 
+void sensors_get_info(uint8_t line,uint8_t sensor)
+{
+	MembraneSystem.sensor_scratchbuf[0] = 0;
+	MembraneSystem.sensor_scratchbuf[1] = '<';
+	MembraneSystem.sensor_scratchbuf[2] = 'I';
+	MembraneSystem.sensor_scratchbuf[3] = sensor;
+	MembraneSystem.sensor_scratchbuf[4] = '>';
+	MembraneSystem.sensor_scratchbuf[5] = 0;
+	switch(line)
+	{
+	case	1:	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6); break;
+	case	2:	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6); break;
+	case	3:	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6); break;
+	case	4:	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6); break;
+	}
+}
 
 void sensors_send_special(void)
 {
@@ -396,6 +412,21 @@ int			sensor_data_index,line_data_index;
 				sprintf((char *)MembraneSystem.prc2_mailbox,"Special %d %s %s",MembraneSystem.new_board_address,MembraneSystem.new_DSC_serial_string,MembraneSystem.new_DSC_date);
 			}
 		}
+		break;
+	case SENSORS_FLASH_GETINFO:
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"I %d %d",&line_data_index,&sensor_data_index);
+		if ( pnum == 2 )
+		{
+			sensors_get_info(line_data_index,sensor_data_index);
+		}
+		/*
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"I %d %d",&line_data_index,&sensor_data_index);
+		if ( pnum == 2 )
+		{
+			sensors_get_info(line_data_index,sensor_data_index);
+			sprintf((char *)MembraneSystem.prc2_mailbox,"Info request sent to line %d sensor %d",line_data_index,sensor_data_index);
+		}
+		*/
 		break;
 	default:
 		sprintf((char *)MembraneSystem.prc2_mailbox,"ERROR : UNKNOWN COMMAND");

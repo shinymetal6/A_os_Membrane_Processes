@@ -103,8 +103,8 @@ typedef struct
 	uint32_t		parameter1_from_usb;
 	uint32_t		parameter2_from_usb;
 	uint32_t		parameter3_from_usb;
-	uint32_t		string1_from_usb[32];
-	uint32_t		string2_from_usb[32];
+	char			string1_from_usb[32];
+	char			string2_from_usb[32];
 	uint8_t			usb_rx_buf_rxed[USB_BUF_LEN];
 	uint8_t			usb_rx_buf[USB_BUF_LEN];
 	uint8_t			usb_rx_buf_len;
@@ -208,6 +208,7 @@ typedef struct
 #define	SENSORS_GETACQ_COMMAND		'A'
 #define	SENSORS_SCAN_COMMAND		'S'
 #define	SENSORS_SPECIAL_COMMAND		'x'
+#define	SENSORS_FLASH_GETINFO		'I'
 
 #define	SENSORS_DISCOVERY_TIME		10
 

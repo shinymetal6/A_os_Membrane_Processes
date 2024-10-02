@@ -507,3 +507,19 @@ void ConcentratorWindow::on_SpecialString_pushButton_clicked()
     }
 }
 
+void ConcentratorWindow::on_RequestInfo_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+    QByteArray sensor;
+
+        line = ui->GetInfoLine_comboBox->currentText().toUtf8();
+        sensor = ui->GetInfoSensor_comboBox->currentText().toUtf8();
+
+        Command = "<I "+line+" "+sensor+">";
+        if ( (reply = serial_tx(Command)) != "1" )
+        {
+            qDebug()<<reply;
+        }
+}

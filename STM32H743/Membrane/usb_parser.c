@@ -69,7 +69,7 @@ int	p1,p2,p3;
 	pnum = sscanf((char * )Buf,"<%c%d%d%d", &p0, &p1,&p2,&p3);
 	if ( p0 == 'x')
 	{
-		pnum = sscanf((char * )Buf,"<x %d %d %s %s", &MembraneSystem.parameter1_from_usb, &MembraneSystem.parameter2_from_usb,MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
+		pnum = sscanf((char * )Buf,"<x %d %d %s %s", (int *)&MembraneSystem.parameter1_from_usb, (int *)&MembraneSystem.parameter2_from_usb,MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
 		if ( pnum == 4 )
 		{
 			MembraneSystem.command_from_usb = 'x';
