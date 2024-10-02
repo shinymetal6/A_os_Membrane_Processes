@@ -92,10 +92,7 @@ uint32_t	i;
 uint32_t read_summary(uint32_t summary_index)
 {
 uint32_t	i;
-/*
-uint8_t 	*flash_data;
-uint32_t	flash_crc;
-*/
+
 	MembraneSystem.flash_address = summary_index * FLASH_USED_BLOCKS * QSPI_BLOCK_SIZE;
 	read_page(MembraneSystem.flash_summary_buffer,MembraneSystem.flash_address);
 	i = sscanf((char *)MembraneSystem.flash_summary_buffer,"CHEADER %s %s %d %d %d 0x%08x B",MembraneSystem.flash_app_name,MembraneSystem.flash_app_version,(int *)&MembraneSystem.flash_binary_app_size,(int *)&MembraneSystem.flash_written_size,(int *)&MembraneSystem.flash_block_count,(int *)&MembraneSystem.flash_crc);
@@ -106,13 +103,6 @@ uint32_t	flash_crc;
 		MembraneSystem.flash_binary_app_size = 0;
 		MembraneSystem.flash_block_count = 0;
 	}
-	/*
-	flash_data = (uint8_t *)&_d2ram_start;
-	flash_data += QSPI_PAGE_SIZE;
-	flash_crc = crc_flash((uint32_t *)flash_data,MembraneSystem.flash_binary_app_size);
-	if ( flash_crc != MembraneSystem.flash_crc )
-		return 1;
-		*/
 	return 0;
 }
 

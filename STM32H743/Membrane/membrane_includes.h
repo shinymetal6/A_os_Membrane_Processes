@@ -73,6 +73,7 @@
 #define		SENSORS_CLOSING_FLAG	(SENSORS_UPDATE_LEN-2)
 #define		SENSORS_TERMINATOR		(SENSORS_UPDATE_LEN-1)
 
+#define		LINE_BROADCAST			0xff
 #define		SENSORS_BROADCAST		0xff
 #define		SENSORS_RESERVED		0x00
 
@@ -102,6 +103,8 @@ typedef struct
 	uint32_t		parameter1_from_usb;
 	uint32_t		parameter2_from_usb;
 	uint32_t		parameter3_from_usb;
+	uint32_t		string1_from_usb[32];
+	uint32_t		string2_from_usb[32];
 	uint8_t			usb_rx_buf_rxed[USB_BUF_LEN];
 	uint8_t			usb_rx_buf[USB_BUF_LEN];
 	uint8_t			usb_rx_buf_len;
@@ -147,7 +150,9 @@ typedef struct
 	/* others */
 	uint8_t			name_version_string[USB_BUF_LEN];
 	uint8_t			name_version_string_len;
-
+	int				new_board_address;
+	char			new_DSC_serial_string[32];
+	char			new_DSC_date[32];
 	uint8_t			scratch_buf[QSPI_PAGE_SIZE];
 
 }MembraneSystem_TypeDef;
@@ -188,7 +193,8 @@ typedef struct
 #define	LINE_LEN				32
 
 #define	FLASH_USED_BLOCKS		2
-#define	IHEX_BUFFER_SIZE		(QSPI_BLOCK_SIZE*FLASH_USED_BLOCKS)
+#define	FLASH_RESERVED			4096
+#define	IHEX_BUFFER_SIZE		((QSPI_BLOCK_SIZE*FLASH_USED_BLOCKS)-FLASH_RESERVED)
 
 /* commands */
 #define	SENSORS_POWER_ON			'P'
@@ -201,6 +207,7 @@ typedef struct
 #define	SENSORS_GETMAP_COMMAND		'M'
 #define	SENSORS_GETACQ_COMMAND		'A'
 #define	SENSORS_SCAN_COMMAND		'S'
+#define	SENSORS_SPECIAL_COMMAND		'x'
 
 #define	SENSORS_DISCOVERY_TIME		10
 

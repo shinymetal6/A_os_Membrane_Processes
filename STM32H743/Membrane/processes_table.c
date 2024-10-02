@@ -24,11 +24,11 @@ USRprcs_t	UserProcesses[USR_PROCESS_NUMBER] =
 {
 		{
 				.user_process = process_1_sensors,
-				.stack_size = 2048,
+				.stack_size = 4096,
 		},
 		{
 				.user_process = process_2_usb_485,
-				.stack_size = 2048,
+				.stack_size = 4096,
 		},
 		{
 				.user_process = process_3,

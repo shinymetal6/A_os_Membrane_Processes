@@ -21,8 +21,7 @@ MembraneSystem_TypeDef		MembraneSystem;
 MembraneData_TypeDef		MembraneData;
 
 
-uint8_t	tim_cntr = 0;
-uint8_t	discovery_time = 10;
+uint8_t	led_tim_cntr = 0;
 
 /* data
  * 0x00,<Gn>,0x00
@@ -44,12 +43,12 @@ static void power_off_serials(void)
 
 static void led_ops(void)
 {
-	tim_cntr++;
-	if (( tim_cntr == 14) || ( tim_cntr == 18))
+	led_tim_cntr++;
+	if (( led_tim_cntr == 14) || ( led_tim_cntr == 18))
 		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-	else if ( tim_cntr == 20)
+	else if ( led_tim_cntr == 20)
 	{
-		tim_cntr = 0;
+		led_tim_cntr = 0;
 	}
 	else
 		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
@@ -98,6 +97,19 @@ uint8_t len = strlen((char *)buf),selected_uart;
 	return 1;
 }
 
+void clear_discovery_array(void)
+{
+uint32_t	i,j;
+	MembraneSystem.sensor_map_line_index = MembraneSystem.sensor_map_sensor_index = 0;
+	for(i=0;i<MAX_LINES;i++)
+	{
+		for(j=0;j<MAX_SENSORS;j++)
+		{
+			MembraneSystem.sensor_map[i][j] = 0;
+		}
+	}
+}
+
 uint8_t sensors_discovery(void)
 {
 	if ( MembraneSystem.sensor_map_sensor_index < MAX_SENSORS)
@@ -122,69 +134,44 @@ uint8_t sensors_discovery(void)
 
 uint8_t sensors_send_write_command_to_sensors(uint8_t line,uint8_t sensor)
 {
-uint8_t	selected_uart;
-
-	if ( (sensor < MAX_SENSORS) || (sensor == SENSORS_BROADCAST))
+	if ( MembraneSystem.dwnld_line_selector < MAX_LINES)
 	{
-		MembraneSystem.sensor_scratchbuf[0] = 0;
-		MembraneSystem.sensor_scratchbuf[1] = '<';
-		MembraneSystem.sensor_scratchbuf[2] = SENSORS_FLASH_WRITE;
-		MembraneSystem.sensor_scratchbuf[3] = sensor;
-		MembraneSystem.sensor_scratchbuf[4] = '>';
-		MembraneSystem.sensor_scratchbuf[5] = 0;
-
-		if ( sensor != SENSORS_BROADCAST)
+		if ( (MembraneSystem.dwnld_sensor_selector < MAX_SENSORS) || (MembraneSystem.dwnld_sensor_selector == SENSORS_BROADCAST))
 		{
-			selected_uart = line_to_uart(line);
-			if ( selected_uart == INVALID_UART)
-				return 1;
-			switch ( selected_uart )
+			MembraneSystem.sensor_scratchbuf[0] = 0;
+			MembraneSystem.sensor_scratchbuf[1] = '<';
+			MembraneSystem.sensor_scratchbuf[2] = SENSORS_FLASH_WRITE;
+			MembraneSystem.sensor_scratchbuf[3] = MembraneSystem.dwnld_sensor_selector;
+			MembraneSystem.sensor_scratchbuf[4] = '>';
+			MembraneSystem.sensor_scratchbuf[5] = 0;
+
+			switch ( MembraneSystem.dwnld_line_selector )
 			{
-			case HW_UART4:
+			case 1:
 				hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
 				break;
-			case HW_UART5:
+			case 2:
 				hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
 				break;
-			case HW_UART7:
+			case 3:
 				hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
 				break;
-			case HW_UART8:
+			case 4:
 				hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
 				break;
 			}
+			return 0;
 		}
-		else
-		{
-			hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
-			hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
-			hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
-			hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
-		}
-		return 0;
 	}
 	return 1;
 }
 
-void sensors_discovery_reset(void)
-{
-	MembraneSystem.sensor_map_line_index = MembraneSystem.sensor_map_sensor_index = 0;
-}
-
-void clear_discovery_array(void)
-{
-uint32_t	i,j;
-	for(i=0;i<MAX_LINES;i++)
-	{
-		for(j=0;j<MAX_SENSORS;j++)
-		{
-			MembraneSystem.sensor_map[i][j] = 0;
-		}
-	}
-}
-
 void sensors_get_data(void)
 {
+	MembraneData.sensor_type[0][MembraneSystem.sensor_selector] = 0;
+	MembraneData.sensor_type[1][MembraneSystem.sensor_selector] = 0;
+	MembraneData.sensor_type[2][MembraneSystem.sensor_selector] = 0;
+	MembraneData.sensor_type[3][MembraneSystem.sensor_selector] = 0;
 	MembraneSystem.sensor_scratchbuf[0] = 0;
 	MembraneSystem.sensor_scratchbuf[1] = '<';
 	MembraneSystem.sensor_scratchbuf[2] = 'A';
@@ -197,6 +184,49 @@ void sensors_get_data(void)
 	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
 }
 
+void sensors_go_special(uint8_t special)
+{
+	MembraneSystem.sensor_scratchbuf[0] = 0;
+	MembraneSystem.sensor_scratchbuf[1] = '<';
+	MembraneSystem.sensor_scratchbuf[2] = 'x';
+	MembraneSystem.sensor_scratchbuf[3] = SENSORS_BROADCAST;
+	MembraneSystem.sensor_scratchbuf[4] = special+0x30;
+	MembraneSystem.sensor_scratchbuf[5] = '>';
+	MembraneSystem.sensor_scratchbuf[6] = 0;
+	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,7);
+	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,7);
+	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,7);
+	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,7);
+}
+
+
+void sensors_send_special(void)
+{
+uint32_t	len , i , index;
+	MembraneSystem.sensor_scratchbuf[0] = 0;
+	MembraneSystem.sensor_scratchbuf[1] = '<';
+	MembraneSystem.sensor_scratchbuf[2] = 'x';
+	MembraneSystem.sensor_scratchbuf[3] = SENSORS_BROADCAST;
+	MembraneSystem.sensor_scratchbuf[4] = '2';
+	MembraneSystem.sensor_scratchbuf[5] = (uint8_t )MembraneSystem.new_board_address;
+	index = 6;
+	len = strlen(MembraneSystem.new_DSC_serial_string);
+	for(i=0;i<len;i++,index++)
+		MembraneSystem.sensor_scratchbuf[index] = MembraneSystem.new_DSC_serial_string[i];
+	len = strlen(MembraneSystem.new_DSC_date);
+	MembraneSystem.sensor_scratchbuf[index] = ' ';
+	index++;
+	for(i=0;i<len;i++,index++)
+		MembraneSystem.sensor_scratchbuf[index] = MembraneSystem.new_DSC_date[i];
+	MembraneSystem.sensor_scratchbuf[index] = '>';
+	index++;
+	MembraneSystem.sensor_scratchbuf[index] = 0;
+	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,index);
+	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,index);
+	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,index);
+	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,index);
+}
+
 void check_sensors_flash(uint8_t line, uint8_t sensor)
 {
 	sprintf((char *)MembraneSystem.sensor_scratchbuf," <%c0> ",SENSORS_FLASH_CHECKREQ);
@@ -206,8 +236,8 @@ void check_sensors_flash(uint8_t line, uint8_t sensor)
 char	tmp_buf[64];
 void parse_mbx_in(void)
 {
-uint32_t	pnum,mbprc2len;
-uint8_t		line,sensor,i;
+uint32_t	pnum,mbprc2len,sensor;
+uint8_t		i;
 int			sensor_data_index,line_data_index;
 
 	bzero((char *)prc1_mbx_rxbuf,PRC1_MAILBOX_LEN);
@@ -245,12 +275,12 @@ int			sensor_data_index,line_data_index;
 		}
 		break;
 	case	SENSORS_FLASH_WRITE	: /* W : Send Write_data command */
-		pnum = sscanf((char *)prc1_mbx_rxbuf,"W %d %d",(int *)&line,(int *)&sensor);
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"W %d %d",(int *)&MembraneSystem.dwnld_line_selector,(int *)&MembraneSystem.dwnld_sensor_selector);
 		if ( pnum == 2 )
 		{
 			sprintf((char *)MembraneSystem.prc2_mailbox,"Writing");
 			MembraneSystem.sensors_status &= ~SENSORS_ON_UPDATE;
-			sensors_send_write_command_to_sensors(line,sensor);
+			sensors_send_write_command_to_sensors(MembraneSystem.dwnld_line_selector,MembraneSystem.dwnld_sensor_selector);
 		}
 		break;
 	case	CONCENTRATOR_FLASH_GETINFO	: /* Get stored file info */
@@ -271,9 +301,9 @@ int			sensor_data_index,line_data_index;
 			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery in progress");
 		else
 		{
-			sensors_discovery_reset();
+			clear_discovery_array();
 			sprintf((char *)MembraneSystem.prc2_mailbox,"Discovery From USB");
-			discovery_time = 0;
+			MembraneSystem.sensors_status |= SENSORS_DISCOVERY;
 		}
 		break;
 	case	SENSORS_GETMAP_COMMAND	: /* M : Get sensors map after a discovery command */
@@ -315,8 +345,6 @@ int			sensor_data_index,line_data_index;
 			if (( line_data_index < SENSORS_LINE ) && ( sensor_data_index < SENSORS_NUM ))
 			{
 				bzero((char *)MembraneSystem.prc2_mailbox,PRC2_MAILBOX_LEN);
-#define ASDF
-#ifdef ASDF
 				sprintf((char *)MembraneSystem.prc2_mailbox,"DSC %1d Sensor %2d Type %2d Readout %4d Scale Factor %4d DAC %d Calibration %4d Temperature %2d",
 						line_data_index+1,
 						sensor_data_index+1,
@@ -327,20 +355,6 @@ int			sensor_data_index,line_data_index;
 						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
 						MembraneData.sensor_temperature[line_data_index][sensor_data_index]
 						);
-#else
-				sprintf((char *)MembraneSystem.prc2_mailbox,"DSC %1d Sensor %2d Type %2d Readout %4d",
-						line_data_index+1,
-						sensor_data_index+1,
-						MembraneData.sensor_type[line_data_index][sensor_data_index],
-						MembraneData.sensor_conductivity[line_data_index][sensor_data_index]);
-				sprintf(tmp_buf," Scale Factor %4d DAC %d Calibration %4d Temperature %2d",
-						MembraneData.sensor_scale_factor[line_data_index][sensor_data_index],
-						MembraneData.sensor_da_outval[line_data_index][sensor_data_index],
-						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
-						MembraneData.sensor_temperature[line_data_index][sensor_data_index]
-						);
-				strcat((char *)MembraneSystem.prc2_mailbox,tmp_buf);
-#endif
 			}
 			else
 			{
@@ -361,6 +375,28 @@ int			sensor_data_index,line_data_index;
 			sprintf((char *)MembraneSystem.prc2_mailbox,"Scan start");
 		}
 		break;
+	case	SENSORS_SPECIAL_COMMAND	: /* S : Scan all sensors , sensor_data_index used as command*/
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"x %d %d %s %s",&sensor_data_index,&MembraneSystem.new_board_address,MembraneSystem.new_DSC_serial_string,MembraneSystem.new_DSC_date);
+		if ( pnum == 1 )
+		{
+			if ((sensor_data_index == 0 ) || (sensor_data_index == 1 ))
+			{
+				if (sensor_data_index == 0 )
+					sprintf((char *)MembraneSystem.prc2_mailbox,"Special off");
+				else
+					sprintf((char *)MembraneSystem.prc2_mailbox,"Special on");
+				sensors_go_special(sensor_data_index);
+			}
+		}
+		if ( pnum == 4 )
+		{
+			if (sensor_data_index == 2 )
+			{
+				sensors_send_special();
+				sprintf((char *)MembraneSystem.prc2_mailbox,"Special %d %s %s",MembraneSystem.new_board_address,MembraneSystem.new_DSC_serial_string,MembraneSystem.new_DSC_date);
+			}
+		}
+		break;
 	default:
 		sprintf((char *)MembraneSystem.prc2_mailbox,"ERROR : UNKNOWN COMMAND");
 		break;
@@ -374,20 +410,12 @@ int			sensor_data_index,line_data_index;
 void process_1_sensors(uint32_t process_id)
 {
 uint32_t	wakeup,flags;
-uint8_t		selected_uart;
+uint8_t		tx_prog_packet;
 
 	MembraneSystem.sensor_selector = 0;
 	MembraneSystem.sensor_sentinel_start = '<';
 	MembraneSystem.sensor_sentinel_end = '>';
 	power_off_serials();
-	/******************************************************/
-	/***************          D E B U G       *************/
-	/******************************************************/
-	//power_on_serials();
-	/******************************************************/
-	/***************          D E B U G E N D *************/
-	/******************************************************/
-	//create_getdata_buffer();
 	allocate_hw(HW_UART4,0);
 	hw_receive_uart_sentinel(HW_UART4,MembraneSystem.sensor_rxbuf[0],SENSORS_RX_LEN,MembraneSystem.sensor_sentinel_start, MembraneSystem.sensor_sentinel_end,SENSORS_RX_TIMEOUT);
 	allocate_hw(HW_UART5,0);
@@ -415,25 +443,31 @@ uint8_t		selected_uart;
 
 			if (( MembraneSystem.sensors_status & SENSORS_POWERED ) == SENSORS_POWERED )
 			{
-				discovery_time++;
-				if ( discovery_time == SENSORS_DISCOVERY_TIME )
-				{
-					MembraneSystem.sensors_status |= SENSORS_DISCOVERY;
-				}
 				if (( MembraneSystem.sensors_status & SENSORS_DISCOVERY ) == SENSORS_DISCOVERY )
 				{
 					if ( sensors_discovery() )
 						MembraneSystem.sensors_status &= ~SENSORS_DISCOVERY;
-					discovery_time = SENSORS_DISCOVERY_TIME+1;
 				}
 
 				if (( MembraneSystem.sensors_status & SENSORS_ON_UPDATE ) == SENSORS_ON_UPDATE )
 				{
-					selected_uart = line_to_uart(MembraneSystem.dwnld_line_selector-1);
-					if ( tx_update_packet(selected_uart) == 0 ) // update finished
+					switch ( MembraneSystem.dwnld_line_selector )
 					{
-						MembraneSystem.sensors_status |= SENSORS_READY_TO_FLASH;
+					case 1:
+						tx_prog_packet = tx_update_packet(HW_UART4);
+						break;
+					case 2:
+						tx_prog_packet = tx_update_packet(HW_UART5);
+						break;
+					case 3:
+						tx_prog_packet = tx_update_packet(HW_UART7);
+						break;
+					case 4:
+						tx_prog_packet = tx_update_packet(HW_UART8);
+						break;
 					}
+					if ( tx_prog_packet == 0 ) // update finished
+						MembraneSystem.sensors_status |= SENSORS_READY_TO_FLASH;
 				}
 
 				if ((MembraneSystem.sensors_status & SENSORS_RUN ) == SENSORS_RUN)
@@ -449,19 +483,16 @@ uint8_t		selected_uart;
 					}
 				}
 			}
-			else
-			{
-				discovery_time = 0;
-				sensors_discovery_reset();
-			}
 		}
 
 		if ( wakeup & (EVENT_UART4_IRQ|EVENT_UART5_IRQ|EVENT_UART7_IRQ|EVENT_UART8_IRQ) )
 		{
 			if (( flags & WAKEUP_FLAGS_UART_RX) == WAKEUP_FLAGS_UART_RX)
 				sensors_serial_parser(wakeup,flags);
+			/*
 			if (( flags & WAKEUP_FLAGS_UART_TX) == WAKEUP_FLAGS_UART_TX)
 				selected_uart = wakeup_to_uart(wakeup);
+				*/
 		}
 	}
 }

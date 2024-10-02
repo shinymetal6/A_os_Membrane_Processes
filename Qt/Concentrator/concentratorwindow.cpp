@@ -9,6 +9,7 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QFile>
+#include <QFileDialog>
 #include <QCoreApplication>
 #include <QTextStream>
 #include <QThread>
@@ -18,13 +19,19 @@ ConcentratorWindow::ConcentratorWindow(QWidget *parent)
     , ui(new Ui::ConcentratorWindow)
 {
     QPixmap redled (":/ledred.png");
+    QPixmap greenled(":/ledgreen.png");
 
     ui->setupUi(this);
     power_state = 0;
+    special_state = 0;
     ui->PowerON_pushButton->setEnabled(false);
     ui->Power_label->setPixmap(redled);
     ui->data_frame->setEnabled(false);
     ui->program_frame->setEnabled(false);
+    ui->StoreToSensors_pushButton->setEnabled(false);
+    ui->StartProgramSensors_pushButton->setEnabled(false);
+    ui->Special_label->setPixmap(greenled);
+    ui->Special_pushButton->setEnabled(false);
     wait_reply_var = WAIT_REPLY;
     timer0Id = 0;
 }
@@ -122,6 +129,7 @@ void ConcentratorWindow::on_Port_comboBox_currentTextChanged(const QString &arg1
             ui->statusbar->showMessage(arg1+" : Serial port opened");
             serial.setReadBufferSize (1024);
             ui->PowerON_pushButton->setEnabled(true);
+
         }
     }
     else
@@ -139,133 +147,32 @@ void ConcentratorWindow::on_Exit_pushButton_clicked()
     close();
 }
 
-void ConcentratorWindow::on_DownloadBinary_pushButton_clicked()
-{
-    QPixmap redled (":/ledred.png");
-    QPixmap greenled(":/ledgreen.png");
-
-    QByteArray hex_line,reply,fsizeQ;
-    folder =  "/Devel/Stm32_16.0_A_os_2024.09-rc/Membrane-2412171-00-Sensor/Debug/";
-    filename = "Membrane-2412171-00-Sensor.hex";
-    fileversion = "1.0.0rc0";
-    ui->statusbar->showMessage("Downloading "+filename);
-
-    ui->Flashing_label->setPixmap(redled);
-
-    ui->FlashBinary_pushButton->setEnabled(false);
-    ui->Program_pushButton->setEnabled(false);
-    ui->Line_comboBox->setEnabled(false);
-    ui->Sensor_comboBox->setEnabled(false);
-
-    QFile file(folder+filename);
-    int fsize,s_unit;
-
-    serial.flush();
-
-    if (!file.open(QIODevice::ReadOnly))
-    {
-        qDebug()<<"File not found";
-        return ;
-    }
-    fsize = file.size();
-    s_unit = fsize/100;
-
-    fsizeQ.setNum(fsize);
-    QByteArray Details = "File " + filename.toUtf8() +" Version "+fileversion.toUtf8() +" Size "+fsizeQ;
-    qDebug()<<Details;
-    QByteArray Title = ":T "+filename.toUtf8() +" "+fileversion.toUtf8() +" "+fsizeQ+"\r\n";
-    while ( (reply = serial_tx(Title)) == "K" )
-    {
-        qDebug()<<reply;
-    }
-
-    while ( fsize)
-    {
-        hex_line = file.readLine();
-        if ( (reply = serial_tx(hex_line)) != "1" )
-        {
-            //qDebug()<<hex_line;
-        }
-        fsize -= hex_line.length();
-        ui->download_progressBar->setValue(100-fsize/s_unit);
-    }
-
-    file.close();
-    ui->statusbar->showMessage(filename+" downloaded");
-    ui->FlashBinary_pushButton->setEnabled(true);
-    ui->Program_pushButton->setEnabled(true);
-    ui->Line_comboBox->setEnabled(true);
-    ui->Sensor_comboBox->setEnabled(true);
-}
 
 void ConcentratorWindow::on_GetInfo_pushButton_clicked()
 {
 QByteArray reply;
 QByteArray Command;
-    Command = "<G "+ui->Getinfo_comboBox->currentText().toUtf8()+">";
+    Command = "<G 0>";
     qDebug()<<Command;
     if ( (reply = serial_tx(Command)) != "1" )
     {
         qDebug()<<reply;
         ui->statusbar->showMessage(reply);
-        if ( reply[5] != 'U')
+        if ( reply != "Read flash error")
         {
-            ui->Program_pushButton->setEnabled(true);
-            ui->FlashBinary_pushButton->setEnabled(true);
+            ui->StoreToSensors_pushButton->setEnabled(true);
+            ui->StartProgramSensors_pushButton->setEnabled(true);
             ui->Line_comboBox->setEnabled(true);
             ui->Sensor_comboBox->setEnabled(true);
         }
         else
         {
-            ui->Program_pushButton->setEnabled(false);
-            ui->FlashBinary_pushButton->setEnabled(false);
+            ui->StoreToSensors_pushButton->setEnabled(false);
+            ui->StartProgramSensors_pushButton->setEnabled(false);
             ui->Line_comboBox->setEnabled(false);
             ui->Sensor_comboBox->setEnabled(false);
         }
     }
-}
-
-void ConcentratorWindow::on_Program_pushButton_clicked()
-{
-    QByteArray reply;
-    QByteArray Command;
-        Command = "<W "+ui->Program_comboBox->currentText().toUtf8()+">";
-        qDebug()<<Command;
-        if ( (reply = serial_tx(Command)) != "1" )
-        {
-            qDebug()<<reply;
-        }
-}
-
-void ConcentratorWindow::on_FlashBinary_pushButton_clicked()
-{
-QByteArray reply;
-QByteArray Command;
-QByteArray line;
-QByteArray sensor;
-QPixmap redled (":/ledred.png");
-QPixmap greenled(":/ledgreen.png");
-
-    wait_reply_var = WAIT_REPLY_DOWNLOAD;
-
-    ui->SensorInFlash_label->setPixmap(redled);
-    qApp->processEvents();
-    line = ui->Line_comboBox->currentText().toUtf8();
-    sensor = ui->Sensor_comboBox->currentText().toUtf8();
-    if ( ui->Line_comboBox->currentText() == "All")
-        line = "255";
-    if ( ui->Sensor_comboBox->currentText() == "All")
-        sensor = "255";
-
-    Command = "<F "+line+" "+sensor+">";
-    qDebug()<<Command;
-    if ( (reply = serial_tx(Command)) != "1" )
-    {
-        qDebug()<<reply;
-        ui->SensorInFlash_label->setPixmap(greenled);
-        qApp->processEvents();
-    }
-    wait_reply_var = WAIT_REPLY;
 }
 
 void ConcentratorWindow::on_PowerON_pushButton_clicked()
@@ -282,6 +189,7 @@ void ConcentratorWindow::on_PowerON_pushButton_clicked()
         ui->Power_label->setPixmap(greenled);
         ui->data_frame->setEnabled(true);
         ui->program_frame->setEnabled(true);
+        ui->Special_pushButton->setEnabled(true);
     }
     else
     {
@@ -290,6 +198,7 @@ void ConcentratorWindow::on_PowerON_pushButton_clicked()
         ui->Power_label->setPixmap(redled);
         ui->data_frame->setEnabled(false);
         ui->program_frame->setEnabled(false);
+        ui->Special_pushButton->setEnabled(false);
     }
 
     qDebug()<<Command;
@@ -383,12 +292,43 @@ void ConcentratorWindow::on_Scan_pushButton_clicked()
     }
 }
 
+
+void ConcentratorWindow::on_StartProgramSensors_pushButton_clicked()
+{
+QByteArray reply;
+QByteArray Command;
+QByteArray line;
+QByteArray sensor;
+
+    line = ui->ProgramLine_comboBox->currentText().toUtf8();
+    sensor = ui->ProgramSensor_comboBox->currentText().toUtf8();
+    if ( ui->ProgramLine_comboBox->currentText() == "All")
+        line = "255";
+    if ( ui->ProgramSensor_comboBox->currentText() == "All")
+        sensor = "255";
+
+    Command = "<W "+line+" "+sensor+">";
+    qDebug()<<Command;
+    if ( (reply = serial_tx(Command)) != "1" )
+    {
+        qDebug()<<reply;
+    }
+}
+
 void ConcentratorWindow::timerEvent(QTimerEvent *event)
 {
     QByteArray reply;
     QByteArray Command;
+    int i,j;
+    QByteArray qline;
+    QByteArray qsensor;
+    int dsc,sensor,type,readout,scalefactor,dac,calibration,temperature;
+
     if ( event->timerId() == timer0Id )
     {
+        Command = "<S>";
+        serial_tx(Command);
+
         toggle ++;
         toggle &= 3;
         if ( toggle == 0 )
@@ -399,22 +339,171 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
             ui->statusbar->showMessage("Running Scan @"+ui->setScanTime_comboBox->currentText()+" sec |");
         else if ( toggle == 3 )
             ui->statusbar->showMessage("Running Scan @"+ui->setScanTime_comboBox->currentText()+" sec /");
-
-        //qDebug()<<"Timer";
-
-        Command = "<S>";
-        //qDebug()<<Command;
-
-        if ( (reply = serial_tx(Command)) != "1" )
+        qDebug()<<"***********************";
+        for(i=1;i<5;i++)
         {
-            //qDebug()<<reply;
-        }
-        Command = "<A 1 5>";
-        if ( (reply = serial_tx(Command)) != "1" )
-        {
-            qDebug()<<reply;
-        }
+            for(j=1;j<9;j++)
+            {
+                qline.setNum(i);
+                qsensor.setNum(j);
+                Command = "<A "+qline+" "+qsensor+">";
+                if ( (reply = serial_tx(Command)) != "1" )
+                {
+                    //qDebug()<<reply;
+                    const char* DataAsString = reply.constData();
+                    //"DSC 1 Sensor  5 Type  1 Readout 2374 Scale Factor    1 DAC 2047 Calibration    4 Temperature 32"
+                    sscanf(DataAsString,"DSC %d Sensor  %d Type  %d Readout %d Scale Factor    %d DAC %d Calibration    %d Temperature %d",
+                           &dsc,&sensor,&type,&readout,&scalefactor,&dac,&calibration,&temperature);
+                    if ( type == 1 )
+                    {
+                        //qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor<<" "<<dac<<" "<<calibration<<" "<<temperature;
+                        qDebug()<<reply;
+                    }
 
+                }
+            }
+        }
+        qDebug()<<"***********************";
 
     }
 }
+
+
+void ConcentratorWindow::on_DownloadBinary_pushButton_clicked()
+{
+    QPixmap redled (":/ledred.png");
+    QPixmap greenled(":/ledgreen.png");
+
+    QByteArray hex_line,reply,fsizeQ;
+    fileversion = "1.0.0rc0";
+    ui->statusbar->showMessage("Downloading "+filename);
+
+    ui->Flashing_label->setPixmap(redled);
+
+    ui->StoreToSensors_pushButton->setEnabled(false);
+    ui->StartProgramSensors_pushButton->setEnabled(false);
+    ui->Line_comboBox->setEnabled(false);
+    ui->Sensor_comboBox->setEnabled(false);
+
+    QFile file(folder+filename);
+    int fsize,s_unit;
+
+    serial.flush();
+
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        qDebug()<<"File not found";
+        return ;
+    }
+    fsize = file.size();
+    s_unit = fsize/100;
+
+    fsizeQ.setNum(fsize);
+    QFileInfo fi(filename);
+    QString base = fi .baseName();
+    QByteArray Title = ":T "+base.toUtf8() +" "+fileversion.toUtf8() +" "+fsizeQ+"\r\n";
+    qDebug()<<Title;
+    while ( (reply = serial_tx(Title)) == "K" )
+    {
+        qDebug()<<reply;
+    }
+
+    while ( fsize)
+    {
+        hex_line = file.readLine();
+        if ( (reply = serial_tx(hex_line)) != "1" )
+        {
+            //qDebug()<<hex_line;
+        }
+        fsize -= hex_line.length();
+        ui->download_progressBar->setValue(100-fsize/s_unit);
+    }
+
+    file.close();
+    ui->statusbar->showMessage(filename+" downloaded");
+    ui->StoreToSensors_pushButton->setEnabled(true);
+    ui->StartProgramSensors_pushButton->setEnabled(true);
+    ui->Line_comboBox->setEnabled(true);
+    ui->Sensor_comboBox->setEnabled(true);
+}
+
+void ConcentratorWindow::on_SelectFile_pushButton_clicked()
+{
+    filename = QFileDialog::getOpenFileName();
+    ui->label_FILE->setText(filename);
+
+}
+
+void ConcentratorWindow::on_StoreToSensors_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+    QByteArray sensor;
+    QPixmap redled (":/ledred.png");
+    QPixmap greenled(":/ledgreen.png");
+
+        wait_reply_var = WAIT_REPLY_DOWNLOAD;
+
+        ui->SensorInFlash_label->setPixmap(redled);
+        qApp->processEvents();
+        line = ui->Line_comboBox->currentText().toUtf8();
+        sensor = ui->Sensor_comboBox->currentText().toUtf8();
+        if ( ui->Line_comboBox->currentText() == "All")
+            line = "255";
+        if ( ui->Sensor_comboBox->currentText() == "All")
+            sensor = "255";
+
+        Command = "<F "+line+" "+sensor+">";
+        qDebug()<<Command;
+        if ( (reply = serial_tx(Command)) != "1" )
+        {
+            qDebug()<<reply;
+            ui->SensorInFlash_label->setPixmap(greenled);
+            qApp->processEvents();
+        }
+        wait_reply_var = WAIT_REPLY;
+}
+
+void ConcentratorWindow::on_Special_pushButton_clicked()
+{
+QByteArray reply;
+QByteArray Command;
+QPixmap redled (":/ledred.png");
+QPixmap greenled(":/ledgreen.png");
+
+    if ( special_state == SPECIAL_STATE_NORMAL )
+    {
+        Command = "<x 1>";
+        ui->Special_label->setPixmap(redled);
+        ui->Special_pushButton->setText("Normal");
+    }
+    else
+    {
+        Command = "<x 0>";
+        ui->Special_pushButton->setText("Special");
+        ui->Special_label->setPixmap(greenled);
+    }
+
+    qDebug()<<Command;
+    if ( (reply = serial_tx(Command)) != "1" )
+    {
+        special_state ++;
+        special_state &= 1;
+
+        qDebug()<<reply;
+    }
+}
+
+void ConcentratorWindow::on_SpecialString_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    Command = "<x 2 "+ui->NewSensorAddress_comboBox->currentText().toUtf8()+" "+ui->Name_plainTextEdit->toPlainText().toUtf8()+" "+ui->Version_plainTextEdit->toPlainText().toUtf8()+" >";
+    //qDebug()<<Command;
+    if ( (reply = serial_tx(Command)) != "1" )
+    {
+        qDebug()<<reply;
+    }
+}
+

@@ -71,18 +71,10 @@ uint8_t line_to_uart(uint8_t line)
 	return INVALID_UART;
 }
 
-uint8_t sensors_serial_parser(uint32_t wakeup,uint32_t flags)
+uint8_t serial_compiler(uint8_t line,uint8_t rx_line_len)
 {
-uint8_t		line,sensor;
+uint8_t		sensor;
 uint8_t		i;
-uint8_t		rx_line_len;
-
-	line = uart_to_line(wakeup_to_uart(wakeup));
-
-	if  ( line == 255)
-		return 1;
-
-	rx_line_len = hw_get_uart_receive_len(wakeup_to_uart(wakeup));
 
 	if ( MembraneSystem.sensor_rxbuf[line][SENSORS_INITIATOR]  == '<' )
 	{
@@ -111,9 +103,50 @@ uint8_t		rx_line_len;
 			MembraneData.sensor_calibration[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
 			MembraneData.sensor_temperature[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][17] << 8) | MembraneSystem.sensor_rxbuf[line][18];
 			break;
+		default : return 1;
 		}
 	}
 	return 0;
+}
+
+uint8_t sensors_serial_parser(uint32_t wakeup,uint32_t flags)
+{
+uint8_t			line,rx_line_len,ret_val=0;
+uint32_t		l_wakeup;
+
+	l_wakeup = wakeup;
+
+	while ( l_wakeup != 0 )
+	{
+		if (( l_wakeup & EVENT_UART4_IRQ) == EVENT_UART4_IRQ)
+		{
+			l_wakeup &= ~EVENT_UART4_IRQ;
+			rx_line_len = hw_get_uart_receive_len(HW_UART4);
+			line = 0;
+		}
+		else if (( l_wakeup & EVENT_UART5_IRQ) == EVENT_UART5_IRQ)
+		{
+			l_wakeup &= ~EVENT_UART5_IRQ;
+			rx_line_len = hw_get_uart_receive_len(HW_UART5);
+			line = 1;
+		}
+		else if (( l_wakeup & EVENT_UART7_IRQ) == EVENT_UART7_IRQ)
+		{
+			l_wakeup &= ~EVENT_UART7_IRQ;
+			rx_line_len = hw_get_uart_receive_len(HW_UART7);
+			line = 2;
+		}
+		else if (( l_wakeup & EVENT_UART8_IRQ) == EVENT_UART8_IRQ)
+		{
+			l_wakeup &= ~EVENT_UART8_IRQ;
+			rx_line_len = hw_get_uart_receive_len(HW_UART8);
+			line = 3;
+		}
+		else
+			ret_val ++;
+		ret_val += serial_compiler(line,rx_line_len);
+	}
+	return ret_val;
 }
 
 #endif // #ifdef	MEMBRANE_2412172_00

@@ -11,8 +11,10 @@
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConcentratorWindow; }
 QT_END_NAMESPACE
-#define WAIT_REPLY          1000
-#define WAIT_REPLY_DOWNLOAD 30000
+#define WAIT_REPLY              1000
+#define WAIT_REPLY_DOWNLOAD     30000
+#define SPECIAL_STATE_NORMAL    0
+#define SPECIAL_STATE_SPECIAL   1
 
 class ConcentratorWindow : public QMainWindow
 {
@@ -31,10 +33,6 @@ private slots:
 
     void on_GetInfo_pushButton_clicked();
 
-    void on_Program_pushButton_clicked();
-
-    void on_FlashBinary_pushButton_clicked();
-
     void on_PowerON_pushButton_clicked();
 
     void on_Discovery_pushButton_clicked();
@@ -45,6 +43,16 @@ private slots:
 
     void on_Scan_pushButton_clicked();
 
+    void on_StartProgramSensors_pushButton_clicked();
+
+    void on_SelectFile_pushButton_clicked();
+
+    void on_StoreToSensors_pushButton_clicked();
+
+    void on_Special_pushButton_clicked();
+
+    void on_SpecialString_pushButton_clicked();
+
 private:
     Ui::ConcentratorWindow *ui;
 
@@ -53,6 +61,7 @@ private:
     QSerialPort serial;
     int serial_started;
     int power_state;
+    int special_state;
     int packets;
     int packets_errors;
     int wait_reply_var;

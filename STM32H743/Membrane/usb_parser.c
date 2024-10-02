@@ -39,18 +39,18 @@ void System_Process_USB_ihex_Replies(uint8_t reply)
 	hw_send_usb(MembraneSystem.usb_tx_buf, MembraneSystem.usb_tx_buf_len);
 }
 
-uint8_t Host_decode_USB_ihex_packet(uint8_t* Buf,uint16_t BufLen)
+uint8_t Host_decode_USB_ihex_packet(void)
 {
 uint32_t	pnum;
 
-	if ( Buf[0] == ':')
+	if ( MembraneSystem.usb_rx_buf[0] == ':')
 	{
-		if (( Buf[7] == '0') && ( Buf[8] == '1'))
+		if (( MembraneSystem.usb_rx_buf[7] == '0') && ( MembraneSystem.usb_rx_buf[8] == '1'))
 			return USB_IHEX_LAST_LINE_VALID;
-		else if ( Buf[1] == 'T')
+		else if ( MembraneSystem.usb_rx_buf[1] == 'T')
 		{
 			bzero(MembraneSystem.flash_app_name,SENSORS_APPNAME);
-			pnum = sscanf((char *)Buf,":T %s %s %d",(char *)MembraneSystem.flash_app_name,(char *)MembraneSystem.flash_app_version,(int *)&MembraneSystem.flash_hex_app_size);
+			pnum = sscanf((char *)MembraneSystem.usb_rx_buf,":T %s %s %d",(char *)MembraneSystem.flash_app_name,(char *)MembraneSystem.flash_app_version,(int *)&MembraneSystem.flash_hex_app_size);
 			if ( pnum == 3 )
 				return USB_IHEX_TITLE_VALID;
 		}
@@ -67,30 +67,52 @@ char p0;
 int	p1,p2,p3;
 
 	pnum = sscanf((char * )Buf,"<%c%d%d%d", &p0, &p1,&p2,&p3);
-
-	switch(pnum)
+	if ( p0 == 'x')
 	{
-	case	4:
-		MembraneSystem.command_from_usb = toupper(p0);
-		MembraneSystem.parameter1_from_usb = p1;
-		MembraneSystem.parameter2_from_usb = p2;
-		MembraneSystem.parameter3_from_usb = p3;
-		break;
-	case	3:
-		MembraneSystem.command_from_usb = toupper(p0);
-		MembraneSystem.parameter1_from_usb = p1;
-		MembraneSystem.parameter2_from_usb = p2;
-		break;
-	case	2:
-		MembraneSystem.command_from_usb = toupper(p0);
-		MembraneSystem.parameter1_from_usb = p1;
-		break;
-	case	1:
-		MembraneSystem.command_from_usb = toupper(p0);
-		break;
-	default:
-		break;
+		pnum = sscanf((char * )Buf,"<x %d %d %s %s", &MembraneSystem.parameter1_from_usb, &MembraneSystem.parameter2_from_usb,MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
+		if ( pnum == 4 )
+		{
+			MembraneSystem.command_from_usb = 'x';
+			pnum = 5;
+		}
+		if ( pnum == 1 )
+		{
+			MembraneSystem.command_from_usb = 'x';
+			MembraneSystem.parameter1_from_usb = p1;
+			pnum = 2;
+		}
 	}
+	else
+	{
+		switch(pnum)
+		{
+		case	4:
+			//MembraneSystem.command_from_usb = toupper(p0);
+			MembraneSystem.command_from_usb = p0;
+			MembraneSystem.parameter1_from_usb = p1;
+			MembraneSystem.parameter2_from_usb = p2;
+			MembraneSystem.parameter3_from_usb = p3;
+			break;
+		case	3:
+			//MembraneSystem.command_from_usb = toupper(p0);
+			MembraneSystem.command_from_usb = p0;
+			MembraneSystem.parameter1_from_usb = p1;
+			MembraneSystem.parameter2_from_usb = p2;
+			break;
+		case	2:
+			//MembraneSystem.command_from_usb = toupper(p0);
+			MembraneSystem.command_from_usb = p0;
+			MembraneSystem.parameter1_from_usb = p1;
+			break;
+		case	1:
+			//MembraneSystem.command_from_usb = toupper(p0);
+			MembraneSystem.command_from_usb = p0;
+			break;
+		default:
+			break;
+		}
+	}
+
 	return pnum;
 }
 

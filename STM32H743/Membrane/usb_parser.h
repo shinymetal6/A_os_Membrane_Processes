@@ -36,7 +36,7 @@
 extern	uint8_t Host_decode_USB_packet(uint8_t* Buf);
 extern	void	System_Process_USB_Replies(void);
 
-extern	uint8_t Host_decode_USB_ihex_packet(uint8_t* Buf,uint16_t BufLen);
+extern	uint8_t Host_decode_USB_ihex_packet(void);
 extern  void    System_Process_USB_ihex_Replies(uint8_t reply);
 
 extern	uint8_t Host_pack_USB_packet(uint8_t *rx_buf,uint8_t len);

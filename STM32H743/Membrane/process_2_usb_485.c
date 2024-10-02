@@ -52,7 +52,7 @@ uint8_t		usb_reply;
 			packet_type = Host_pack_USB_packet(MembraneSystem.usb_rx_buf_rxed,MembraneSystem.usb_rx_buf_len);
 			if ( packet_type == USB_IHEX_PACKET )
 			{
-				decode_result = Host_decode_USB_ihex_packet(MembraneSystem.usb_rx_buf,MembraneSystem.usb_rx_buf_len);
+				decode_result = Host_decode_USB_ihex_packet();
 				usb_reply = 'N';
 				if ( decode_result != USB_IHEX_LINE_ERROR)
 				{
@@ -89,6 +89,11 @@ uint8_t		usb_reply;
 				if ( decode_result == 4 )
 				{
 					sprintf((char *)MembraneSystem.prc1_mailbox,"%c %d %d %d",(char )MembraneSystem.command_from_usb,(int )MembraneSystem.parameter1_from_usb,(int )MembraneSystem.parameter2_from_usb,(int )MembraneSystem.parameter3_from_usb);
+					mbx_send(LINE_PROCESS_ID,PRC1_MAILBOX_ID,MembraneSystem.prc1_mailbox,strlen((char *)MembraneSystem.prc1_mailbox));
+				}
+				if ( decode_result == 5 )
+				{
+					sprintf((char *)MembraneSystem.prc1_mailbox,"x %d %d %s %s",MembraneSystem.parameter1_from_usb, MembraneSystem.parameter2_from_usb, MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
 					mbx_send(LINE_PROCESS_ID,PRC1_MAILBOX_ID,MembraneSystem.prc1_mailbox,strlen((char *)MembraneSystem.prc1_mailbox));
 				}
 				bzero(MembraneSystem.usb_rx_buf,USB_BUF_LEN);
