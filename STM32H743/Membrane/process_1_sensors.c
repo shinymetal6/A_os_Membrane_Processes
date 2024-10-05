@@ -19,7 +19,7 @@ uint8_t	prc1_mbx_rxbuf[PRC1_MAILBOX_LEN];
 
 MembraneSystem_TypeDef		MembraneSystem;
 MembraneData_TypeDef		MembraneData;
-
+extern	MembraneParameters_TypeDef	MembraneParameters[MAX_LINES];
 
 uint8_t	led_tim_cntr = 0;
 
@@ -82,21 +82,6 @@ uint8_t tx_update_packet(uint8_t selected_uart)
 	return 0;
 }
 
-uint8_t serial_send(uint8_t *buf,uint8_t line , uint8_t sensor)
-{
-uint8_t len = strlen((char *)buf),selected_uart;
-	if (( line < MAX_LINES) && ( sensor < MAX_SENSORS ))
-	{
-		selected_uart = line_to_uart(line);
-		buf[0] = 0;
-		buf[3] = sensor;
-		buf[len-1] = 0;
-		hw_send_uart_dma(selected_uart,buf,len);
-		return 0;
-	}
-	return 1;
-}
-
 void clear_discovery_array(void)
 {
 uint32_t	i,j;
@@ -109,147 +94,11 @@ uint32_t	i,j;
 		}
 	}
 }
-
-uint8_t sensors_discovery(void)
-{
-	if ( MembraneSystem.sensor_map_sensor_index < MAX_SENSORS)
-	{
-		MembraneSystem.sensor_scratchbuf[0] = 0;
-		MembraneSystem.sensor_scratchbuf[1] = '<';
-		MembraneSystem.sensor_scratchbuf[2] = SENSORS_DISCOVERY_COMMAND;
-		MembraneSystem.sensor_scratchbuf[3] = MembraneSystem.sensor_map_sensor_index+1;
-		MembraneSystem.sensor_scratchbuf[4] = '>';
-		MembraneSystem.sensor_scratchbuf[5] = 0;
-
-		hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
-		hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
-		hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
-		hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
-
-		MembraneSystem.sensor_map_sensor_index++;
-		return 0;
-	}
-	return 1;
-}
-
-uint8_t sensors_send_write_command_to_sensors(uint8_t line,uint8_t sensor)
-{
-	if ( MembraneSystem.dwnld_line_selector < MAX_LINES)
-	{
-		if ( (MembraneSystem.dwnld_sensor_selector < MAX_SENSORS) || (MembraneSystem.dwnld_sensor_selector == SENSORS_BROADCAST))
-		{
-			MembraneSystem.sensor_scratchbuf[0] = 0;
-			MembraneSystem.sensor_scratchbuf[1] = '<';
-			MembraneSystem.sensor_scratchbuf[2] = SENSORS_FLASH_WRITE;
-			MembraneSystem.sensor_scratchbuf[3] = MembraneSystem.dwnld_sensor_selector;
-			MembraneSystem.sensor_scratchbuf[4] = '>';
-			MembraneSystem.sensor_scratchbuf[5] = 0;
-
-			switch ( MembraneSystem.dwnld_line_selector )
-			{
-			case 1:
-				hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
-				break;
-			case 2:
-				hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
-				break;
-			case 3:
-				hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
-				break;
-			case 4:
-				hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
-				break;
-			}
-			return 0;
-		}
-	}
-	return 1;
-}
-
-void sensors_get_data(void)
-{
-	MembraneData.sensor_type[0][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[1][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[2][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[3][MembraneSystem.sensor_selector] = 0;
-	MembraneSystem.sensor_scratchbuf[0] = 0;
-	MembraneSystem.sensor_scratchbuf[1] = '<';
-	MembraneSystem.sensor_scratchbuf[2] = 'A';
-	MembraneSystem.sensor_scratchbuf[3] = MembraneSystem.sensor_selector;
-	MembraneSystem.sensor_scratchbuf[4] = '>';
-	MembraneSystem.sensor_scratchbuf[5] = 0;
-	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
-	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
-	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
-	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
-}
-
-void sensors_go_special(uint8_t special)
-{
-	MembraneSystem.sensor_scratchbuf[0] = 0;
-	MembraneSystem.sensor_scratchbuf[1] = '<';
-	MembraneSystem.sensor_scratchbuf[2] = 'x';
-	MembraneSystem.sensor_scratchbuf[3] = SENSORS_BROADCAST;
-	MembraneSystem.sensor_scratchbuf[4] = special+0x30;
-	MembraneSystem.sensor_scratchbuf[5] = '>';
-	MembraneSystem.sensor_scratchbuf[6] = 0;
-	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,7);
-	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,7);
-	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,7);
-	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,7);
-}
-
-void sensors_get_info(uint8_t line,uint8_t sensor)
-{
-	MembraneSystem.sensor_scratchbuf[0] = 0;
-	MembraneSystem.sensor_scratchbuf[1] = '<';
-	MembraneSystem.sensor_scratchbuf[2] = 'I';
-	MembraneSystem.sensor_scratchbuf[3] = sensor;
-	MembraneSystem.sensor_scratchbuf[4] = '>';
-	MembraneSystem.sensor_scratchbuf[5] = 0;
-	switch(line)
-	{
-	case	1:	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6); break;
-	case	2:	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6); break;
-	case	3:	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6); break;
-	case	4:	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6); break;
-	}
-}
-
-void sensors_send_special(void)
-{
-uint32_t	len , i , index;
-	MembraneSystem.sensor_scratchbuf[0] = 0;
-	MembraneSystem.sensor_scratchbuf[1] = '<';
-	MembraneSystem.sensor_scratchbuf[2] = 'x';
-	MembraneSystem.sensor_scratchbuf[3] = SENSORS_BROADCAST;
-	MembraneSystem.sensor_scratchbuf[4] = '2';
-	MembraneSystem.sensor_scratchbuf[5] = (uint8_t )MembraneSystem.new_board_address;
-	index = 6;
-	len = strlen(MembraneSystem.new_DSC_serial_string);
-	for(i=0;i<len;i++,index++)
-		MembraneSystem.sensor_scratchbuf[index] = MembraneSystem.new_DSC_serial_string[i];
-	len = strlen(MembraneSystem.new_DSC_date);
-	MembraneSystem.sensor_scratchbuf[index] = ' ';
-	index++;
-	for(i=0;i<len;i++,index++)
-		MembraneSystem.sensor_scratchbuf[index] = MembraneSystem.new_DSC_date[i];
-	MembraneSystem.sensor_scratchbuf[index] = '>';
-	index++;
-	MembraneSystem.sensor_scratchbuf[index] = 0;
-	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,index);
-	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,index);
-	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,index);
-	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,index);
-}
-
-void check_sensors_flash(uint8_t line, uint8_t sensor)
-{
-	sprintf((char *)MembraneSystem.sensor_scratchbuf," <%c0> ",SENSORS_FLASH_CHECKREQ);
-	serial_send(MembraneSystem.sensor_scratchbuf,line,sensor);
-}
-
 char	tmp_buf[64];
+uint8_t	flash_page[MEM_PAGE_SIZE];
+MembraneParameters_TypeDef	*MembraneRdParameters;
+int	temp_threshold_low,temp_threshold_high,temp_hysteresis_K,temp_hard_limit_low,temp_hard_limit_high,temp_sine_number;
+
 void parse_mbx_in(void)
 {
 uint32_t	pnum,mbprc2len,sensor;
@@ -264,6 +113,70 @@ int			sensor_data_index,line_data_index;
 
 	switch(prc1_mbx_rxbuf[0])
 	{
+	case SENSORS_KWRITE:
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"K %d %d %d %d %d %d %d",
+				&line_data_index,
+				&temp_threshold_low,
+				&temp_threshold_high,
+				&temp_hysteresis_K,
+				&temp_hard_limit_low,
+				&temp_hard_limit_high,
+				&temp_sine_number
+		);
+		if ( pnum == 7 )
+		{
+			if (( line_data_index <= MAX_LINES) && ( line_data_index != 0 ))
+			{
+				line_data_index--;
+				MembraneParameters[line_data_index].threshold_low 	= temp_threshold_low;
+				MembraneParameters[line_data_index].threshold_high 	= temp_threshold_high;
+				MembraneParameters[line_data_index].hysteresis_K 	= temp_hysteresis_K;
+				MembraneParameters[line_data_index].hard_limit_low 	= temp_hard_limit_low;
+				MembraneParameters[line_data_index].hard_limit_high = temp_hard_limit_high;
+				MembraneParameters[line_data_index].sine_number 	= temp_sine_number;
+				sprintf((char *)MembraneSystem.prc2_mailbox,"K %d %d %d %d %d %d %d ",
+						line_data_index+1,
+						MembraneParameters[line_data_index].threshold_low,
+						MembraneParameters[line_data_index].threshold_high,
+						MembraneParameters[line_data_index].hysteresis_K,
+						MembraneParameters[line_data_index].hard_limit_low,
+						MembraneParameters[line_data_index].hard_limit_high,
+						MembraneParameters[line_data_index].sine_number
+						);
+				erase_blocks(1,PARAMS_FLASH_ADDRESS/(MEM_SBLOCK_SIZE * 1024U));
+				write_page((uint8_t *)&MembraneParameters,PARAMS_FLASH_ADDRESS);
+				sensors_send_kparameters(line_data_index+1);
+			}
+		}
+		break;
+	case SENSORS_KREAD:
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"%c %d",(char *)SENSORS_KREAD,&line_data_index);
+		if ( pnum == 2 )
+		{
+			if (( line_data_index <= MAX_LINES) && ( line_data_index != 0 ))
+			{
+				line_data_index--;
+				read_page(flash_page,PARAMS_FLASH_ADDRESS);
+				MembraneRdParameters = (MembraneParameters_TypeDef *)flash_page;
+				MembraneParameters[line_data_index].threshold_low =	MembraneRdParameters->threshold_low;
+				MembraneParameters[line_data_index].threshold_high =	MembraneRdParameters->threshold_high;
+				MembraneParameters[line_data_index].hysteresis_K = MembraneRdParameters->hysteresis_K;
+				MembraneParameters[line_data_index].hard_limit_low = MembraneRdParameters->hard_limit_low;
+				MembraneParameters[line_data_index].hard_limit_high = MembraneRdParameters->hard_limit_high;
+				MembraneParameters[line_data_index].sine_number = MembraneRdParameters->sine_number;
+				sprintf((char *)MembraneSystem.prc2_mailbox,"%c %d %d %d %d %d %d %d ",
+						SENSORS_KREAD,
+						line_data_index+1,
+						MembraneParameters[line_data_index].threshold_low,
+						MembraneParameters[line_data_index].threshold_high,
+						MembraneParameters[line_data_index].hysteresis_K,
+						MembraneParameters[line_data_index].hard_limit_low,
+						MembraneParameters[line_data_index].hard_limit_high,
+						MembraneParameters[line_data_index].sine_number
+						);
+			}
+		}
+		break;
 	case	SENSORS_POWER_ON :	/* P : Power on */
 		power_on_serials();
 		sprintf((char *)MembraneSystem.prc2_mailbox,"Power ON");
@@ -419,14 +332,6 @@ int			sensor_data_index,line_data_index;
 		{
 			sensors_get_info(line_data_index,sensor_data_index);
 		}
-		/*
-		pnum = sscanf((char *)prc1_mbx_rxbuf,"I %d %d",&line_data_index,&sensor_data_index);
-		if ( pnum == 2 )
-		{
-			sensors_get_info(line_data_index,sensor_data_index);
-			sprintf((char *)MembraneSystem.prc2_mailbox,"Info request sent to line %d sensor %d",line_data_index,sensor_data_index);
-		}
-		*/
 		break;
 	default:
 		sprintf((char *)MembraneSystem.prc2_mailbox,"ERROR : UNKNOWN COMMAND");
@@ -476,7 +381,7 @@ uint8_t		tx_prog_packet;
 			{
 				if (( MembraneSystem.sensors_status & SENSORS_DISCOVERY ) == SENSORS_DISCOVERY )
 				{
-					if ( sensors_discovery() )
+					if ( sensors_send_discovery() )
 						MembraneSystem.sensors_status &= ~SENSORS_DISCOVERY;
 				}
 

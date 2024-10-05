@@ -340,10 +340,12 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
         else if ( toggle == 3 )
             ui->statusbar->showMessage("Running Scan @"+ui->setScanTime_comboBox->currentText()+" sec /");
         qDebug()<<"***********************";
+        wait_reply_var = 50;
         for(i=1;i<5;i++)
         {
             for(j=1;j<9;j++)
             {
+                //QThread::msleep(10);
                 qline.setNum(i);
                 qsensor.setNum(j);
                 Command = "<A "+qline+" "+qsensor+">";
@@ -354,12 +356,17 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
                     //"DSC 1 Sensor  5 Type  1 Readout 2374 Scale Factor    1 DAC 2047 Calibration    4 Temperature 32"
                     sscanf(DataAsString,"DSC %d Sensor  %d Type  %d Readout %d Scale Factor    %d DAC %d Calibration    %d Temperature %d",
                            &dsc,&sensor,&type,&readout,&scalefactor,&dac,&calibration,&temperature);
+                    //qDebug()<<reply;
                     if ( type == 1 )
                     {
                         //qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor<<" "<<dac<<" "<<calibration<<" "<<temperature;
                         qDebug()<<reply;
                     }
-
+                    if ( type == 2 )
+                    {
+                        //qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor;
+                        qDebug()<<reply;
+                    }
                 }
             }
         }
@@ -522,4 +529,59 @@ void ConcentratorWindow::on_RequestInfo_pushButton_clicked()
         {
             qDebug()<<reply;
         }
+}
+
+void ConcentratorWindow::on_ReadParameters_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+    int recvline,recvsensor,ThresholdLow,ThresholdHigh,Hysteresis_K,HardLimitLow,HardLimitHigh,Sines,pnum;
+    line = ui->ParamLineRead_comboBox->currentText().toUtf8();
+    Command = "<Q "+line+">";
+    qDebug()<<Command;
+    if ( (reply = serial_tx(Command)) != "1" )
+    {
+        qDebug()<<reply;
+        const char* DataAsString = reply.constData();
+        pnum = sscanf(DataAsString,"Q %d %d %d %d %d %d %d %d",
+               &recvline,&ThresholdLow,&ThresholdHigh,&Hysteresis_K,&HardLimitLow,&HardLimitHigh,&Sines);
+        if ( pnum == 7)
+        {
+            ui->ThresholdLow_lineEdit->setText(QString::number(ThresholdLow));
+            ui->ThresholdHigh_lineEdit->setText(QString::number(ThresholdHigh));
+            ui->Hysteresis_K_lineEdit->setText(QString::number(Hysteresis_K));
+            ui->HardLimitLow_lineEdit->setText(QString::number(HardLimitLow));
+            ui->HardLimitHigh_lineEdit->setText(QString::number(HardLimitHigh));
+            ui->Sines_lineEdit->setText(QString::number(Sines));
+        }
+    }
+}
+
+void ConcentratorWindow::on_WriteParameters_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+
+    line = ui->ParamLineRead_comboBox->currentText().toUtf8();
+    ui->ThresholdLow_lineEdit->setValidator( new QIntValidator(0, 1024, this) );
+    ui->ThresholdHigh_lineEdit->setValidator( new QIntValidator(2048, 4095, this) );
+    ui->Hysteresis_K_lineEdit->setValidator( new QIntValidator(0, 512, this) );
+    ui->HardLimitLow_lineEdit->setValidator( new QIntValidator(0, 512, this) );
+    ui->HardLimitHigh_lineEdit->setValidator( new QIntValidator(2048, 4095, this) );
+    ui->Sines_lineEdit->setValidator( new QIntValidator(2, 8, this) );
+    Command = "<K "+line+" "+
+            ui->ThresholdLow_lineEdit->text().toUtf8()+" "+
+            ui->ThresholdHigh_lineEdit->text().toUtf8()+" "+
+            ui->Hysteresis_K_lineEdit->text().toUtf8()+" "+
+            ui->HardLimitLow_lineEdit->text().toUtf8()+" "+
+            ui->HardLimitHigh_lineEdit->text().toUtf8()+" "+
+            ui->Sines_lineEdit->text().toUtf8()+" "+
+            ">";
+    qDebug()<<Command;
+    if ( (reply = serial_tx(Command)) != "1" )
+    {
+        qDebug()<<reply;
+    }
 }

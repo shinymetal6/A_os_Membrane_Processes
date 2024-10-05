@@ -96,6 +96,19 @@ uint8_t		usb_reply;
 					sprintf((char *)MembraneSystem.prc1_mailbox,"x %d %d %s %s",(int )MembraneSystem.parameter1_from_usb, (int )MembraneSystem.parameter2_from_usb, MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
 					mbx_send(LINE_PROCESS_ID,PRC1_MAILBOX_ID,MembraneSystem.prc1_mailbox,strlen((char *)MembraneSystem.prc1_mailbox));
 				}
+				if ( decode_result == 7 )
+				{
+					sprintf((char *)MembraneSystem.prc1_mailbox,"K %d %d %d %d %d %d %d",
+							(int )MembraneSystem.parameter1_from_usb,
+							(int )MembraneSystem.parameter2_from_usb,
+							(int )MembraneSystem.parameter3_from_usb,
+							(int )MembraneSystem.parameter4_from_usb,
+							(int )MembraneSystem.parameter5_from_usb,
+							(int )MembraneSystem.parameter6_from_usb,
+							(int )MembraneSystem.parameter7_from_usb
+							);
+					mbx_send(LINE_PROCESS_ID,PRC1_MAILBOX_ID,MembraneSystem.prc1_mailbox,strlen((char *)MembraneSystem.prc1_mailbox));
+				}
 				bzero(MembraneSystem.usb_rx_buf,USB_BUF_LEN);
 			}
 		}

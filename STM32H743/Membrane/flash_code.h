@@ -35,5 +35,8 @@ extern	uint32_t get_flashcode(void);
 extern	uint32_t decode_and_store(uint8_t *buf,uint32_t size);
 extern	uint32_t read_code(uint32_t code_index);
 extern	uint32_t read_summary(uint32_t summary_index);
+extern	void erase_blocks(uint8_t block_num,uint32_t start_block);
+extern	void write_page(uint8_t *buf,uint32_t flash_address);
+extern	void read_page(uint8_t *buf,uint32_t flash_address);
 
 #endif /* STM32H743_MEMBRANE_FLASHCODE_H_ */

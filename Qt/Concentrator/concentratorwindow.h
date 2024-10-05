@@ -55,6 +55,10 @@ private slots:
 
     void on_RequestInfo_pushButton_clicked();
 
+    void on_ReadParameters_pushButton_clicked();
+
+    void on_WriteParameters_pushButton_clicked();
+
 private:
     Ui::ConcentratorWindow *ui;
 

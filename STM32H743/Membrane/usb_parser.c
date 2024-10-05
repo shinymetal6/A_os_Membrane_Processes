@@ -67,7 +67,7 @@ char p0;
 int	p1,p2,p3;
 
 	pnum = sscanf((char * )Buf,"<%c%d%d%d", &p0, &p1,&p2,&p3);
-	if ( p0 == 'x')
+	if ( p0 == SENSORS_SPECIAL_COMMAND)
 	{
 		pnum = sscanf((char * )Buf,"<x %d %d %s %s", (int *)&MembraneSystem.parameter1_from_usb, (int *)&MembraneSystem.parameter2_from_usb,MembraneSystem.string1_from_usb,MembraneSystem.string2_from_usb);
 		if ( pnum == 4 )
@@ -81,6 +81,20 @@ int	p1,p2,p3;
 			MembraneSystem.parameter1_from_usb = p1;
 			pnum = 2;
 		}
+	}
+	else if ( p0 == SENSORS_KWRITE)
+	{
+		pnum = sscanf((char * )Buf,"<K %d %d %d %d %d %d %d >",
+				(int *)&MembraneSystem.parameter1_from_usb,
+				(int *)&MembraneSystem.parameter2_from_usb,
+				(int *)&MembraneSystem.parameter3_from_usb,
+				(int *)&MembraneSystem.parameter4_from_usb,
+				(int *)&MembraneSystem.parameter5_from_usb,
+				(int *)&MembraneSystem.parameter6_from_usb,
+				(int *)&MembraneSystem.parameter7_from_usb
+				);
+		if ( pnum == 7 )
+			MembraneSystem.command_from_usb = SENSORS_KWRITE;
 	}
 	else
 	{

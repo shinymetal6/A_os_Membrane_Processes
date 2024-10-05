@@ -103,6 +103,10 @@ typedef struct
 	uint32_t		parameter1_from_usb;
 	uint32_t		parameter2_from_usb;
 	uint32_t		parameter3_from_usb;
+	uint32_t		parameter4_from_usb;
+	uint32_t		parameter5_from_usb;
+	uint32_t		parameter6_from_usb;
+	uint32_t		parameter7_from_usb;
 	char			string1_from_usb[32];
 	char			string2_from_usb[32];
 	uint8_t			usb_rx_buf_rxed[USB_BUF_LEN];
@@ -167,6 +171,25 @@ typedef struct
 	uint16_t 		sensor_temperature[SENSORS_LINE][SENSORS_NUM];
 }MembraneData_TypeDef;
 
+typedef struct
+{
+	int		threshold_low;
+	int		threshold_high;
+	int		hysteresis_K;
+	int		hard_limit_low;
+	int		hard_limit_high;
+	int		sine_number;
+}MembraneParameters_TypeDef;
+
+#define	DAC_MAX_VALUE			4095
+#define	PARAM_THRESHOLD_MIN		512
+#define	PARAM_THRESHOLD_MAX		(DAC_MAX_VALUE-PARAM_THRESHOLD_MIN)
+#define	PARAM_HYSTERESIS		32
+#define	PARAM_HARDLIMIT_LOW		256
+#define	PARAM_HARDLIMIT_HIGH	(DAC_MAX_VALUE-PARAM_HARDLIMIT_LOW)
+#define	PARAM_SINE_NUMBER		8
+
+
 /* sensors_status */
 #define	SENSORS_RXED			0x01
 #define	SENSORS_DISCOVERY		0x02
@@ -195,6 +218,7 @@ typedef struct
 #define	FLASH_USED_BLOCKS		2
 #define	FLASH_RESERVED			4096
 #define	IHEX_BUFFER_SIZE		((QSPI_BLOCK_SIZE*FLASH_USED_BLOCKS)-FLASH_RESERVED)
+#define	PARAMS_FLASH_ADDRESS	524288
 
 /* commands */
 #define	SENSORS_POWER_ON			'P'
@@ -209,6 +233,8 @@ typedef struct
 #define	SENSORS_SCAN_COMMAND		'S'
 #define	SENSORS_SPECIAL_COMMAND		'x'
 #define	SENSORS_FLASH_GETINFO		'I'
+#define	SENSORS_KWRITE				'K'
+#define	SENSORS_KREAD				'Q'
 
 #define	SENSORS_DISCOVERY_TIME		10
 
@@ -229,5 +255,6 @@ extern	CRC_HandleTypeDef 					hcrc;
 #include "flash_code.h"
 #include "sensors_updater.h"
 #include "serial_parser.h"
+#include "commands_to_sensors.h"
 
 #endif /* STM32U575_MEMBRANE_INCLUDES_H_ */
