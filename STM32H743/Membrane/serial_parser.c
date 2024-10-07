@@ -78,11 +78,7 @@ uint8_t		i;
 
 	if ( MembraneSystem.sensor_rxbuf[line][SENSORS_INITIATOR]  == '<' )
 	{
-		sensor = MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_ADDRESS];
-		if ( ( sensor < MAX_SENSORS )  && ( sensor > 0 ) )
-			sensor--;
-		else
-			return 1;
+		sensor = MembraneSystem.sensor_selector - 1;
 
 		switch(MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_CMD])
 		{
