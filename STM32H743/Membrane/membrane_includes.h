@@ -41,7 +41,7 @@
 #define		PRC2_MAILBOX_LEN	128
 #define		SENSORS_TX_LEN		32
 #define		SAMPLES_LEN			32
-#define		SENSORS_RX_LEN		64
+#define		SENSORS_RX_LEN		128
 #define		SENSORS_RX_TIMEOUT	25
 #define		SENSORS_RX_DISABLE	4
 
@@ -57,6 +57,7 @@
 #define		SENSORS_INITIATOR		0
 #define		SENSORS_REPLY_CMD		1
 #define		SENSORS_REPLY_ADDRESS	2
+#define		SENSORS_REPLY_TYPE		3
 
 #define		SENSORS_UPDATE_CMD		SENSORS_REPLY_CMD
 #define		SENSORS_UPDATE_ADDRESS	SENSORS_REPLY_ADDRESS
@@ -97,6 +98,9 @@ typedef struct
 	uint8_t			sensor_map_sensor_index;
 	uint8_t 		sensor_discovery_line_selector;
 	uint8_t 		sensor_discovery_sensor_selector;
+
+	uint8_t 		sensor_scan_selector;
+
 
 	/* USB section */
 	uint8_t			command_from_usb;
@@ -235,6 +239,7 @@ typedef struct
 #define	SENSORS_FLASH_GETINFO		'I'
 #define	SENSORS_KWRITE				'K'
 #define	SENSORS_KREAD				'Q'
+#define	SENSORS_GETVERINFO			'J'
 
 #define	SENSORS_DISCOVERY_TIME		10
 

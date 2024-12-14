@@ -59,10 +59,17 @@ private slots:
 
     void on_WriteParameters_pushButton_clicked();
 
+    void on_RequestVersionInfo_pushButton_clicked();
+
+    void on_setScanTime_comboBox_currentTextChanged(const QString &arg1);
+
+    void on_SelectAlgoCSVFile_pushButton_clicked();
+
 private:
     Ui::ConcentratorWindow *ui;
 
     QByteArray serial_tx( QByteArray hex_line);
+    void store_sensor_data(QByteArray reply , int dsc , int sensor);
 
     QSerialPort serial;
     int serial_started;
@@ -76,6 +83,19 @@ private:
     QString fileversion;
     int timer0Id;
     int timerint;
+    int scan_time;
+    int scan_time_changed;
+    QString csvk_filename;
+
+    QFile CsvFile;
+    QTextStream CsvFileStream;
+    int cmd_counter1;
+    int cmd_counter2;
+    int cmd_counter3;
+    int cmd_counter4;
+    int concentrator_counter;
+
+
 protected:
     void timerEvent(QTimerEvent *event);
 };

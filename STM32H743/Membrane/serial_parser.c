@@ -73,49 +73,76 @@ uint8_t line_to_uart(uint8_t line)
 
 uint8_t serial_compiler(uint8_t line,uint8_t rx_line_len)
 {
-uint8_t		sensor;
+uint8_t		/*sensor,*/received_sensor_address;
 uint8_t		i;
 
 	if ( MembraneSystem.sensor_rxbuf[line][SENSORS_INITIATOR]  == '<' )
 	{
-		sensor = MembraneSystem.sensor_selector - 1;
-
-		switch(MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_CMD])
+		//sensor = MembraneSystem.sensor_selector - 1;
+		received_sensor_address = MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_ADDRESS] - 1; // sensors starts from 1
+		if (  received_sensor_address < MAX_SENSORS)
 		{
-		case SENSORS_FLASH_CHECKREQ	:
-			bzero((char *)MembraneSystem.prc2_mailbox,PRC2_MAILBOX_LEN);
-			for(i=0;i<rx_line_len;i++)
-				MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_reply[line][sensor][i];
-			mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,rx_line_len);
-			break;
-		case SENSORS_DISCOVERY_COMMAND	:
-			MembraneSystem.sensor_map[line][sensor] = MembraneSystem.sensor_rxbuf[line][3];
-			break;
-		case SENSORS_GETACQ_COMMAND	:
-			MembraneData.sensor_type[line][sensor] 		   =  MembraneSystem.sensor_rxbuf[line][3];
-			MembraneData.sensor_conductivity[line][sensor] = (MembraneSystem.sensor_rxbuf[line][5]  << 8) | MembraneSystem.sensor_rxbuf[line][6];
-			MembraneData.sensor_scale_factor[line][sensor] = (MembraneSystem.sensor_rxbuf[line][8]  << 8) | MembraneSystem.sensor_rxbuf[line][9];
-			MembraneData.sensor_da_outval[line][sensor]    = (MembraneSystem.sensor_rxbuf[line][11] << 8) | MembraneSystem.sensor_rxbuf[line][12];
-			MembraneData.sensor_calibration[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
-			MembraneData.sensor_temperature[line][sensor]  = (MembraneSystem.sensor_rxbuf[line][17] << 8) | MembraneSystem.sensor_rxbuf[line][18];
-			break;
-		case SENSORS_FLASH_GETINFO :
-			MembraneSystem.prc2_mailbox[0] = SENSORS_FLASH_GETINFO;
-			MembraneSystem.prc2_mailbox[1] = ' ';
-
-			MembraneSystem.prc2_mailbox[2] = MembraneSystem.sensor_rxbuf[line][2] + 0x30;
-			MembraneSystem.prc2_mailbox[3] = ' ';
-			for(i=4;i<PRC2_MAILBOX_LEN;i++)
+			switch(MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_CMD])
 			{
-				if ( MembraneSystem.sensor_rxbuf[line][i] == '>' )
-					break;
-				else
-					MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_rxbuf[line][i];
+			case SENSORS_FLASH_CHECKREQ	:
+				bzero((char *)MembraneSystem.prc2_mailbox,PRC2_MAILBOX_LEN);
+				for(i=0;i<rx_line_len;i++)
+					MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_reply[line][received_sensor_address][i];
+				mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,rx_line_len);
+				break;
+			case SENSORS_DISCOVERY_COMMAND	:
+				if (  received_sensor_address < MAX_SENSORS)
+				{
+					if ( MembraneSystem.sensor_rxbuf[line][4] == '>')
+						MembraneSystem.sensor_map[line][received_sensor_address] = MembraneSystem.sensor_rxbuf[line][SENSORS_REPLY_TYPE];
+				}
+				break;
+			case SENSORS_GETACQ_COMMAND	:
+				if (  received_sensor_address < MAX_SENSORS)
+				{
+					MembraneData.sensor_type[line][received_sensor_address]			=  MembraneSystem.sensor_rxbuf[line][3];
+					MembraneData.sensor_conductivity[line][received_sensor_address] = (MembraneSystem.sensor_rxbuf[line][5]  << 8) | MembraneSystem.sensor_rxbuf[line][6];
+					MembraneData.sensor_scale_factor[line][received_sensor_address] = (MembraneSystem.sensor_rxbuf[line][8]  << 8) | MembraneSystem.sensor_rxbuf[line][9];
+					MembraneData.sensor_da_outval[line][received_sensor_address]    = (MembraneSystem.sensor_rxbuf[line][11] << 8) | MembraneSystem.sensor_rxbuf[line][12];
+					MembraneData.sensor_calibration[line][received_sensor_address]  = (MembraneSystem.sensor_rxbuf[line][14] << 8) | MembraneSystem.sensor_rxbuf[line][15];
+					MembraneData.sensor_temperature[line][received_sensor_address]  = (MembraneSystem.sensor_rxbuf[line][17] << 8) | MembraneSystem.sensor_rxbuf[line][18];
+				}
+				break;
+			case SENSORS_FLASH_GETINFO :
+				MembraneSystem.prc2_mailbox[0] = SENSORS_FLASH_GETINFO;
+				MembraneSystem.prc2_mailbox[1] = ' ';
+
+				MembraneSystem.prc2_mailbox[2] = MembraneSystem.sensor_rxbuf[line][2] + 0x30;
+				MembraneSystem.prc2_mailbox[3] = ' ';
+				for(i=4;i<PRC2_MAILBOX_LEN;i++)
+				{
+					if ( MembraneSystem.sensor_rxbuf[line][i] == '>' )
+						break;
+					else
+						MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_rxbuf[line][i];
+				}
+				mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,i-1);
+				break;
+			case SENSORS_GETVERINFO :
+				MembraneSystem.prc2_mailbox[0] = SENSORS_GETVERINFO;
+				MembraneSystem.prc2_mailbox[1] = ' ';
+
+				MembraneSystem.prc2_mailbox[2] = MembraneSystem.sensor_rxbuf[line][2] + 0x30;
+				MembraneSystem.prc2_mailbox[3] = ' ';
+				for(i=4;i<PRC2_MAILBOX_LEN;i++)
+				{
+					if ( MembraneSystem.sensor_rxbuf[line][i] == '>' )
+						break;
+					else
+						MembraneSystem.prc2_mailbox[i] = MembraneSystem.sensor_rxbuf[line][i];
+				}
+				mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,i-1);
+				break;
+			default : return 1;
 			}
-			mbx_send(INTERFACE_PROCESS_ID,PRC2_MAILBOX_ID,MembraneSystem.prc2_mailbox,i-1);
-			break;
-		default : return 1;
 		}
+		else
+			return 1;
 	}
 	return 0;
 }
@@ -123,9 +150,7 @@ uint8_t		i;
 uint8_t sensors_serial_parser(uint32_t wakeup,uint32_t flags)
 {
 uint8_t			line,rx_line_len,ret_val=0;
-uint32_t		l_wakeup;
-
-	l_wakeup = wakeup;
+uint32_t		l_wakeup = wakeup;
 
 	while ( l_wakeup != 0 )
 	{

@@ -26,9 +26,10 @@
 
 extern	uint8_t sensors_send_discovery(void);
 extern	uint8_t sensors_send_write_command_to_sensors(uint8_t line,uint8_t sensor);
-extern	void sensors_get_data(void);
+extern	void sensors_get_data(uint8_t 	sensor);
 extern	void sensors_go_special(uint8_t special);
 extern	void sensors_get_info(uint8_t line,uint8_t sensor);
+extern	void sensors_get_version_info(uint8_t line,uint8_t sensor);
 extern	void sensors_send_special(void);
 extern	void check_sensors_flash(uint8_t line, uint8_t sensor);
 extern	void sensors_send_kparameters(uint8_t line);

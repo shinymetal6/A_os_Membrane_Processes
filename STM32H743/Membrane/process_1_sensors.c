@@ -333,6 +333,13 @@ int			sensor_data_index,line_data_index;
 			sensors_get_info(line_data_index,sensor_data_index);
 		}
 		break;
+	case SENSORS_GETVERINFO:
+		pnum = sscanf((char *)prc1_mbx_rxbuf,"J %d %d",&line_data_index,&sensor_data_index);
+		if ( pnum == 2 )
+		{
+			sensors_get_version_info(line_data_index,sensor_data_index);
+		}
+		break;
 	default:
 		sprintf((char *)MembraneSystem.prc2_mailbox,"ERROR : UNKNOWN COMMAND");
 		break;
@@ -347,8 +354,10 @@ void process_1_sensors(uint32_t process_id)
 {
 uint32_t	wakeup,flags;
 uint8_t		tx_prog_packet;
+uint32_t	l_wakeup;
 
 	MembraneSystem.sensor_selector = 0;
+	MembraneSystem.sensor_scan_selector = 0;
 	MembraneSystem.sensor_sentinel_start = '<';
 	MembraneSystem.sensor_sentinel_end = '>';
 	power_off_serials();
@@ -408,14 +417,15 @@ uint8_t		tx_prog_packet;
 
 				if ((MembraneSystem.sensors_status & SENSORS_RUN ) == SENSORS_RUN)
 				{
-					MembraneSystem.sensor_selector++;
-					if ( MembraneSystem.sensor_selector > MAX_SENSORS)
+					if ( MembraneSystem.sensor_scan_selector > MAX_SENSORS)
 					{
 						MembraneSystem.sensors_status &= ~SENSORS_RUN;
+						MembraneSystem.sensor_scan_selector = 0;
 					}
 					else
 					{
-						sensors_get_data();
+						sensors_get_data(MembraneSystem.sensor_scan_selector);
+						MembraneSystem.sensor_scan_selector++;
 					}
 				}
 			}
@@ -424,11 +434,10 @@ uint8_t		tx_prog_packet;
 		if ( wakeup & (EVENT_UART4_IRQ|EVENT_UART5_IRQ|EVENT_UART7_IRQ|EVENT_UART8_IRQ) )
 		{
 			if (( flags & WAKEUP_FLAGS_UART_RX) == WAKEUP_FLAGS_UART_RX)
-				sensors_serial_parser(wakeup,flags);
-			/*
-			if (( flags & WAKEUP_FLAGS_UART_TX) == WAKEUP_FLAGS_UART_TX)
-				selected_uart = wakeup_to_uart(wakeup);
-				*/
+			{
+				l_wakeup = wakeup & (EVENT_UART4_IRQ|EVENT_UART5_IRQ|EVENT_UART7_IRQ|EVENT_UART8_IRQ);
+				sensors_serial_parser(l_wakeup,flags);
+			}
 		}
 	}
 }

@@ -104,16 +104,18 @@ uint8_t sensors_send_write_command_to_sensors(uint8_t line,uint8_t sensor)
 	return 1;
 }
 
-void sensors_get_data(void)
+void sensors_get_data(uint8_t 	sensor)
 {
-	MembraneData.sensor_type[0][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[1][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[2][MembraneSystem.sensor_selector] = 0;
-	MembraneData.sensor_type[3][MembraneSystem.sensor_selector] = 0;
+	/*
+	MembraneData.sensor_type[0][sensor] = 0;
+	MembraneData.sensor_type[1][sensor] = 0;
+	MembraneData.sensor_type[2][sensor] = 0;
+	MembraneData.sensor_type[3][sensor] = 0;
+	*/
 	MembraneSystem.sensor_scratchbuf[0] = 0;
 	MembraneSystem.sensor_scratchbuf[1] = '<';
 	MembraneSystem.sensor_scratchbuf[2] = 'A';
-	MembraneSystem.sensor_scratchbuf[3] = MembraneSystem.sensor_selector;
+	MembraneSystem.sensor_scratchbuf[3] = sensor+1;
 	MembraneSystem.sensor_scratchbuf[4] = '>';
 	MembraneSystem.sensor_scratchbuf[5] = 0;
 	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6);
@@ -142,6 +144,23 @@ void sensors_get_info(uint8_t line,uint8_t sensor)
 	MembraneSystem.sensor_scratchbuf[0] = 0;
 	MembraneSystem.sensor_scratchbuf[1] = '<';
 	MembraneSystem.sensor_scratchbuf[2] = 'I';
+	MembraneSystem.sensor_scratchbuf[3] = sensor;
+	MembraneSystem.sensor_scratchbuf[4] = '>';
+	MembraneSystem.sensor_scratchbuf[5] = 0;
+	switch(line)
+	{
+	case	1:	hw_send_uart_dma(HW_UART4,MembraneSystem.sensor_scratchbuf,6); break;
+	case	2:	hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6); break;
+	case	3:	hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6); break;
+	case	4:	hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6); break;
+	}
+}
+
+void sensors_get_version_info(uint8_t line,uint8_t sensor)
+{
+	MembraneSystem.sensor_scratchbuf[0] = 0;
+	MembraneSystem.sensor_scratchbuf[1] = '<';
+	MembraneSystem.sensor_scratchbuf[2] = 'J';
 	MembraneSystem.sensor_scratchbuf[3] = sensor;
 	MembraneSystem.sensor_scratchbuf[4] = '>';
 	MembraneSystem.sensor_scratchbuf[5] = 0;
