@@ -284,6 +284,17 @@ int			sensor_data_index,line_data_index;
 						MembraneData.sensor_calibration[line_data_index][sensor_data_index],
 						MembraneData.sensor_temperature[line_data_index][sensor_data_index]
 						);
+				if ( MembraneData.sensor_type[line_data_index][sensor_data_index] == SENSOR_TEMPERATURE)
+				{
+					bzero(MembraneSystem.prc2_mailbox,PRC2_MAILBOX_LEN);
+					sprintf((char *)MembraneSystem.prc2_mailbox,"DSC %1d Sensor %2d Type %2d PT1000_TData %4d uP_TData %4d",
+							line_data_index+1,
+							sensor_data_index+1,
+							MembraneData.sensor_type[line_data_index][sensor_data_index],
+							MembraneData.sensor_conductivity[line_data_index][sensor_data_index],
+							MembraneData.sensor_scale_factor[line_data_index][sensor_data_index]
+							);
+				}
 			}
 			else
 			{
@@ -355,6 +366,7 @@ void process_1_sensors(uint32_t process_id)
 uint32_t	wakeup,flags;
 uint8_t		tx_prog_packet;
 uint32_t	l_wakeup;
+uint32_t	tim_flg = 0;
 
 	MembraneSystem.sensor_selector = 0;
 	MembraneSystem.sensor_scan_selector = 0;
@@ -371,6 +383,7 @@ uint32_t	l_wakeup;
 	hw_receive_uart_sentinel(HW_UART8,MembraneSystem.sensor_rxbuf[3],SENSORS_RX_LEN,MembraneSystem.sensor_sentinel_start, MembraneSystem.sensor_sentinel_end,SENSORS_RX_TIMEOUT);
 	clear_discovery_array();
 	create_timer(TIMER_ID_0,50,TIMERFLAGS_FOREVER | TIMERFLAGS_ENABLED);
+	//create_timer(TIMER_ID_0,100,TIMERFLAGS_FOREVER | TIMERFLAGS_ENABLED);
 
 	while(1)
 	{
@@ -417,15 +430,20 @@ uint32_t	l_wakeup;
 
 				if ((MembraneSystem.sensors_status & SENSORS_RUN ) == SENSORS_RUN)
 				{
-					if ( MembraneSystem.sensor_scan_selector > MAX_SENSORS)
+					tim_flg++;
+					if ( tim_flg >= 2 )
 					{
-						MembraneSystem.sensors_status &= ~SENSORS_RUN;
-						MembraneSystem.sensor_scan_selector = 0;
-					}
-					else
-					{
-						sensors_get_data(MembraneSystem.sensor_scan_selector);
-						MembraneSystem.sensor_scan_selector++;
+						tim_flg = 0;
+						if ( MembraneSystem.sensor_scan_selector > MAX_SENSORS)
+						{
+							MembraneSystem.sensors_status &= ~SENSORS_RUN;
+							MembraneSystem.sensor_scan_selector = 0;
+						}
+						else
+						{
+							sensors_get_data(MembraneSystem.sensor_scan_selector);
+							MembraneSystem.sensor_scan_selector++;
+						}
 					}
 				}
 			}

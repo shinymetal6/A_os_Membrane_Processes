@@ -24,6 +24,7 @@ ConcentratorWindow::ConcentratorWindow(QWidget *parent)
     ui->setupUi(this);
     power_state = 0;
     special_state = 0;
+    fi_loaded = 0;
     ui->PowerON_pushButton->setEnabled(false);
     ui->Power_label->setPixmap(redled);
 
@@ -39,6 +40,10 @@ ConcentratorWindow::ConcentratorWindow(QWidget *parent)
     timer0Id = 0;
     scan_time_changed = 0;
     cmd_counter1 = cmd_counter2 = cmd_counter3 = cmd_counter4 = 0;
+    packets = 0;
+    ui->PacketsReceived_lineEdit->setText(QString::number(packets));
+    for(int i=0;i<32;i++)
+        fi[i] = 0;
 }
 
 ConcentratorWindow::~ConcentratorWindow()
@@ -60,14 +65,13 @@ QByteArray reply;
         reply = serial.readAll();
         if ( reply[1] == 'Y')
         {
-            packets++;
+
             QString result;
             result = QString::number(packets).rightJustified(8, '0');
             ui->RX_label->setPixmap(greenled);
         }
         if ( reply[1] == 'E')
         {
-            packets++;
             QString result;
             result = QString::number(packets).rightJustified(8, '0');
             ui->RX_label->setPixmap(greenled);
@@ -76,7 +80,6 @@ QByteArray reply;
         }
         else if ( reply[1] == 'T')
         {
-            packets++;
             QString result;
             result = QString::number(packets).rightJustified(8, '0');
             ui->RX_label->setPixmap(greenled);
@@ -96,7 +99,9 @@ QByteArray reply;
         }
         else
             ui->RX_label->setPixmap(redled);
-        //qDebug()<< reply;
+        packets++;
+        ui->PacketsReceived_lineEdit->setText(QString::number(packets));
+        //qDebug()<< packets;
         return reply;
     }
     else
@@ -187,12 +192,14 @@ void ConcentratorWindow::on_PowerON_pushButton_clicked()
         ui->PowerON_pushButton->setText("Power OFF");
         ui->Power_label->setPixmap(greenled);
         ui->data_frame->setEnabled(true);
-        //ui->program_frame->setEnabled(true);
+#ifdef W_ALL_ENABLED
+        ui->program_frame->setEnabled(true);
         ui->selectfile_frame->setEnabled(true);
         ui->special_frame->setEnabled(true);
         ui->params_frame->setEnabled(true);
+#endif
         ui->k_frame->setEnabled(true);
-        ui->info_frame->setEnabled(true);
+        //ui->info_frame->setEnabled(true);
     }
     else
     {
@@ -283,6 +290,7 @@ void ConcentratorWindow::on_Scan_pushButton_clicked()
         ui->setScanTime_comboBox->setEnabled(true);
         ui->sec_scan_label->setEnabled(true);
         ui->scantime_label->setEnabled(true);
+        ui->k_frame->setEnabled(true);
     }
     else
     {
@@ -291,6 +299,7 @@ void ConcentratorWindow::on_Scan_pushButton_clicked()
         ui->setScanTime_comboBox->setEnabled(false);
         ui->sec_scan_label->setEnabled(false);
         ui->scantime_label->setEnabled(false);
+        ui->k_frame->setEnabled(false);
 
         ui->Scan_pushButton->setText("Stop");
         cmd_counter1 = cmd_counter2 = cmd_counter3 = cmd_counter4 = 0;
@@ -362,9 +371,9 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
             ui->statusbar->showMessage("Running Scan @"+ui->setScanTime_comboBox->currentText()+" sec /");
         //qDebug()<<"***********************";
         wait_reply_var = 50;
-        for(dsc=1;dsc<5;dsc++)
+        for(dsc=1;dsc<NUM_DSC+1;dsc++)
         {
-            for(sensor=1;sensor<9;sensor++)
+            for(sensor=FIRST_WSENSOR;sensor<LAST_WSENSOR+2;sensor++)
             {
                 QThread::msleep(30);
                 qline.setNum(dsc);
@@ -379,7 +388,12 @@ void ConcentratorWindow::timerEvent(QTimerEvent *event)
     }
 }
 
+//QString dirPath= "/Devel/Membrane";
+#ifdef Q_OS_WIN
+QString dirPath= "c:/MembraneLog_3.2";
+#else
 QString dirPath= "/Devel/MembraneLog";
+#endif
 QString filename;
 
 void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sensor)
@@ -390,13 +404,20 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
     QString dayPath = currentDate.toString("ddMMyy");
     QString version = "1.0.0";
     QString folderpath;
-    int type,readout,total_readout,scalefactor,dac,calibration,temperature;
+    int type,readout,total_readout,scalefactor,dac,calibration,temp_micro;
+    int offset;
     concentrator_counter = 1;
     QByteArray q_concentrator_counter;
     q_concentrator_counter.setNum(concentrator_counter);
     QString TopDir_dayPath = dirPath+"/"+currentDate.toString("yyMMdd")+"_CON"+q_concentrator_counter+"_iCON";
     QString File_dayPath = currentDate.toString("yyMMdd")+"_CON"+q_concentrator_counter+"_iCON";
     int cmd_counter;
+    //dac = 2047;
+    int offsets[8];
+    float ftp1000_Tdata;
+    int scale = 0;
+    char    tval[32];
+
     QDir top_directory(dirPath);
     if ( !top_directory.exists())
     {
@@ -415,7 +436,6 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
     QByteArray q_dsc;
     q_dsc.setNum(dsc);
     filename = TopDir_dayPath+"/"+currentDate.toString("yyMMdd")+"_CON"+q_concentrator_counter+"_DSC"+q_dsc+".csv";
-    //qDebug()<< filename;
 
     QFile file(filename);
     if ( ! file.exists())
@@ -449,8 +469,18 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
 
     const char* DataAsString = reply.constData();
     sscanf(DataAsString,"DSC %d Sensor  %d Type  %d Readout %d Scale Factor    %d DAC %d Calibration    %d Temperature %d",
-           &dsc,&sensor,&type,&readout,&scalefactor,&dac,&calibration,&temperature);
-    //qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor<<" "<<dac<<" "<<calibration<<" "<<temperature;
+           &dsc,&sensor,&type,&readout,&scalefactor,&dac,&calibration,&temp_micro);
+//#define DEBUG_APP    1
+#ifdef DEBUG_APP
+    if ( type == 1)
+    {
+        qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor<<" "<<dac<<" "<<calibration<<" "<<temp_micro;
+        qDebug() << DataAsString;
+    }
+    CsvFile.close();
+    return;
+#endif
+
     cmd_counter = 0;
     switch(dsc)
     {
@@ -463,22 +493,69 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
     case 4 :
         cmd_counter = cmd_counter4; cmd_counter4++;break;
     }
+    switch(scalefactor)
+    {
+    case 1 : scale = 0; break;
+    case 2 : scale = 1; break;
+    case 4 : scale = 2; break;
+    case 8 : scale = 3; break;
+    case 16 : scale =4; break;
+    case 32 : scale =5; break;
+    case 64 : scale =6; break;
+    default : scale = 0;
+    }
+
 
     if ( type == 1 )
     {
-        total_readout = readout * scalefactor;
+        //qDebug()<<dsc<<" "<<sensor<<" "<<type<<" "<<readout<<" "<<scalefactor<<" "<<dac<<" "<<calibration<<" "<<temp_micro;
+
         QString timestamp = currentDate.toString("dd/MM/yy")+" "+currentTime.toString("hh:mm:ss");
-        //qDebug()<< timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scalefactor << "," << readout << "," << total_readout << "," << calibration << "," << temperature-11 << ",TPT1000," <<  dac +1 << "," << ",Y,A";
-        qDebug() << "sensor "<< sensor << " scalefactor " << scalefactor << " readout " << readout << " calibration " << calibration ;
-        CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scalefactor << "," << readout << "," << total_readout << "," << calibration << "," << temperature-11 << ",TPT1000," << dac+1 << ",Y,A\n";
+        offset = ui->Offset_lineEdit->text().toInt();
+        sprintf(tval,"%2.1f",tdata_sensor[dsc]);
+        for(int i=0;i<32;i++)
+        {
+            if ( tval[i] == 0 )
+                break;
+            if ( tval[i] == ',')
+                tval[i] = '.';
+        }
+
+        if ( ui->useK_checkBox->isChecked() && (fi_loaded == 1 ))
+        {
+            offsets[0] = offset;
+            for ( int n=1;n<8;n++)
+            {
+                offsets[n] = offsets[n-1]+2559*fi[n-1];
+            }
+            total_readout =   offsets[scale] +  readout * fi[scale];
+
+            if ( dsc == 1 )
+                qDebug()<<"dsc" << dsc << "sensor "<< sensor << " scalefactor " << scale+1 << " readout " << readout*fi[scale] << "offsets" << offsets[scale] << " total_readout " << total_readout << " dac " << dac+1;
+            CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scale+1 << "," << readout << "," << total_readout << "," << calibration << "," << temp_micro << ","<< tval << dac+1 << ",Y,A\n";
+        }
+        else
+        {
+            total_readout = readout * (scale + 1);
+            if ( dsc == 1 )
+                qDebug()<<"dsc" << dsc << "sensor "<< sensor << " scalefactor " << scale+1 << " readout " << readout << " total_readout " << total_readout;
+            CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scale+1 << "," << readout << "," << total_readout << "," << calibration << "," << temp_micro << ","<< tval << "," << dac+1 << ",Y,A\n";
+        }
     }
-    if ( type == 0 )
+
+    if ( type == 2 )
     {
-        //QString timestamp = currentDate.toString("dd/MM/yyyy")+" "+currentTime.toString("hh:mm:ss");
-        //CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << ",0,0,0,0,0,0,0,0,N,A\n";
-        //qDebug()<< dsc << "," << sensor << " : Sensor not present\n";
-        //total readout = offset + readout * f[n]; where f[n] is the value from csv and n is scale factor
-        // 531 scala 8 lettura 2000-2300 , in aria 2000 scala 4
+        int tp1000_Tdata,up_Tdata;
+        float deg1 = 3.9F;
+        float deg0read = 1855.0F;
+        const char* DataAsString = reply.constData();
+        int pnum = sscanf(DataAsString,"DSC %d Sensor  %d Type  %d PT1000_TData %d uP_TData %d",
+               &dsc,&sensor,&type,&tp1000_Tdata,&up_Tdata);
+        if ( pnum == 5 )
+        {
+            ftp1000_Tdata = ((float )tp1000_Tdata - deg0read) / deg1;
+            tdata_sensor[dsc] = ftp1000_Tdata/2;
+        }
     }
     cmd_counter++;
     CsvFile.close();
@@ -724,12 +801,15 @@ void ConcentratorWindow::on_setScanTime_comboBox_currentTextChanged(const QStrin
 void ConcentratorWindow::on_SelectAlgoCSVFile_pushButton_clicked()
 {
     QString filters = "CSV files (*.csv)";
+#ifdef Q_OS_WIN
+    csvk_filename = QFileDialog::getOpenFileName(this, tr("Open CSV File"), "c:/MembraneData",filters);
+#else
     csvk_filename = QFileDialog::getOpenFileName(this, tr("Open CSV File"), "/Devel/MembraneData",filters);
+#endif
     QFileInfo ficsv(csvk_filename);
     QString base = ficsv.completeBaseName() + "." +ficsv.completeSuffix();
     ui->label_CSVFILE->setText(base);
     QFile file(csvk_filename);
-    float fi[32];
 
     if (!file.open(QIODevice::ReadOnly))
         qDebug()<<"File not found";
@@ -764,6 +844,7 @@ void ConcentratorWindow::on_SelectAlgoCSVFile_pushButton_clicked()
         ui->K12_lineEdit->setText(QString::number(fi[11], 'f',8));
         ui->K13_lineEdit->setText(QString::number(fi[12], 'f',8));
         ui->K14_lineEdit->setText(QString::number(fi[13], 'f',8));
+        fi_loaded = 1;
     }
 
 

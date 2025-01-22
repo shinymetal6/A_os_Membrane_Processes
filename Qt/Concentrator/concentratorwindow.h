@@ -16,6 +16,13 @@ QT_END_NAMESPACE
 #define SPECIAL_STATE_NORMAL    0
 #define SPECIAL_STATE_SPECIAL   1
 
+#define NUM_DSC             4
+#define FIRST_WSENSOR       1
+#define LAST_WSENSOR        8
+#define TEMP_SENSOR         9
+
+//#define W_ALL_ENABLED            0
+
 class ConcentratorWindow : public QMainWindow
 {
     Q_OBJECT
@@ -94,6 +101,10 @@ private:
     int cmd_counter3;
     int cmd_counter4;
     int concentrator_counter;
+    float fi[32];
+    float tdata_sensor[NUM_DSC];
+    //float temperature;
+    int fi_loaded;
 
 
 protected:
