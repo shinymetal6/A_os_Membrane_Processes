@@ -30,11 +30,17 @@
 
 DWNLD_DATA_AREA	uint8_t		dwnld_area[IHEX_BUFFER_SIZE];
 
+uint8_t	summary_debug[256];
+
 void write_page(uint8_t *buf,uint32_t flash_address)
 {
+uint8_t bufread = 0;
 	qspi_WriteEnable();
-	qspi_Write(buf,flash_address,QSPI_PAGE_SIZE);
+	if ( qspi_Write(buf,flash_address,QSPI_PAGE_SIZE) == 0 )
+		bufread = 1;
 	qspi_WriteDisable();
+	if ( bufread )
+		qspi_Read(summary_debug,flash_address,QSPI_PAGE_SIZE);
 }
 
 void read_page(uint8_t *buf,uint32_t flash_address)

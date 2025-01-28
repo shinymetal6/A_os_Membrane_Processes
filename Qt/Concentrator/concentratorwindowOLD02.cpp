@@ -14,7 +14,6 @@
 #include <QTextStream>
 #include <QThread>
 
-#define W_ALL_ENABLED  1
 ConcentratorWindow::ConcentratorWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ConcentratorWindow)
@@ -35,6 +34,7 @@ ConcentratorWindow::ConcentratorWindow(QWidget *parent)
     ui->special_frame->setEnabled(false);
     ui->params_frame->setEnabled(false);
     ui->k_frame->setEnabled(false);
+    ui->info_frame->setEnabled(false);
 
     wait_reply_var = WAIT_REPLY;
     timer0Id = 0;
@@ -195,10 +195,11 @@ void ConcentratorWindow::on_PowerON_pushButton_clicked()
 #ifdef W_ALL_ENABLED
         ui->program_frame->setEnabled(true);
         ui->selectfile_frame->setEnabled(true);
-        //ui->special_frame->setEnabled(true);
+        ui->special_frame->setEnabled(true);
         ui->params_frame->setEnabled(true);
 #endif
         ui->k_frame->setEnabled(true);
+        //ui->info_frame->setEnabled(true);
     }
     else
     {
@@ -213,6 +214,7 @@ void ConcentratorWindow::on_PowerON_pushButton_clicked()
         ui->special_frame->setEnabled(false);
         ui->params_frame->setEnabled(false);
         ui->k_frame->setEnabled(false);
+        ui->info_frame->setEnabled(false);
     }
 
     qDebug()<<Command;
@@ -251,6 +253,29 @@ void ConcentratorWindow::on_GetMap_pushButton_clicked()
     {
         qDebug()<<reply;
     }
+}
+
+void ConcentratorWindow::on_GetData_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+    QByteArray sensor;
+    QPixmap redled (":/ledred.png");
+    QPixmap greenled(":/ledgreen.png");
+
+        line = ui->GetDataLine_comboBox->currentText().toUtf8();
+        sensor = ui->GetDataSensor_comboBox->currentText().toUtf8();
+
+        Command = "<A "+line+" "+sensor+">";
+        //qDebug()<<Command;
+        if ( (reply = serial_tx(Command)) != "1" )
+        {
+            qDebug()<<reply;
+            ui->SensorInFlash_label->setPixmap(greenled);
+            qApp->processEvents();
+        }
+        wait_reply_var = WAIT_REPLY;
 }
 
 int toggle=0;
@@ -296,8 +321,6 @@ QByteArray sensor;
 
     line = ui->ProgramLine_comboBox->currentText().toUtf8();
     sensor = ui->ProgramSensor_comboBox->currentText().toUtf8();
-    ui->statusbar->showMessage("Sending write command to sensors");
-
     if ( ui->ProgramLine_comboBox->currentText() == "All")
         line = "255";
     if ( ui->ProgramSensor_comboBox->currentText() == "All")
@@ -312,9 +335,9 @@ QByteArray sensor;
     {
         qDebug()<<reply;
     }
-    ui->statusbar->showMessage("Write command sent");
+    ui->statusbar->showMessage("Writing");
     QThread::msleep(2000);
-    ui->statusbar->showMessage("Write command successfully completed");
+    ui->statusbar->showMessage("Written");
     on_PowerON_pushButton_clicked();
     QThread::msleep(2000);
     on_PowerON_pushButton_clicked();
@@ -378,20 +401,22 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
     QDateTime currentDateTime = QDateTime::currentDateTime();
     QDate currentDate = currentDateTime.date();
     QTime currentTime = currentDateTime.time();
-
+    QString dayPath = currentDate.toString("ddMMyy");
+    QString version = "1.0.0";
+    QString folderpath;
     int type,readout,total_readout,scalefactor,dac,calibration,temp_micro;
     int offset;
     concentrator_counter = 1;
     QByteArray q_concentrator_counter;
     q_concentrator_counter.setNum(concentrator_counter);
     QString TopDir_dayPath = dirPath+"/"+currentDate.toString("yyMMdd")+"_CON"+q_concentrator_counter+"_iCON";
-
+    QString File_dayPath = currentDate.toString("yyMMdd")+"_CON"+q_concentrator_counter+"_iCON";
     int cmd_counter;
+    //dac = 2047;
     int offsets[8];
     float ftp1000_Tdata;
     int scale = 0;
     char    tval[32];
-    int do_debug_print=0;
 
     QDir top_directory(dirPath);
     if ( !top_directory.exists())
@@ -470,35 +495,12 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
     }
 
 
-    int sensor_debug = ui->QSENSOR_DEBUG_comboBox->currentText().toInt();// 0 if All
-    int line_debug = ui->QLINE_DEBUG_comboBox->currentText().toInt(); // 0 if All
-
+    //#define DEBUG_APP_DSC1    1
     if ( type == 1 )
     {
-        if( line_debug != 0)
-        {
-            if ( sensor_debug != 0 )
-            {
-                if (( dsc == line_debug ) && ( sensor == sensor_debug ))
-                   do_debug_print = 1;
-            }
-            else
-                do_debug_print = 1;
-        }
-        else
-        {
-            if ( sensor_debug != 0 )
-            {
-                if ( sensor == sensor_debug )
-                    do_debug_print = 1;
-            }
-            else
-                do_debug_print = 1;
-        }
-
         QString timestamp = currentDate.toString("dd/MM/yy")+" "+currentTime.toString("hh:mm:ss");
         offset = ui->Offset_lineEdit->text().toInt();
-        sprintf(tval,"%2.1f",tdata_sensor[dsc] - 4.1F);
+        sprintf(tval,"%2.1f",tdata_sensor[dsc]);
         for(int i=0;i<32;i++)
         {
             if ( tval[i] == 0 )
@@ -515,14 +517,18 @@ void ConcentratorWindow::store_sensor_data(QByteArray reply , int dsc , int sens
                 offsets[n] = offsets[n-1]+2559*fi[n-1];
             }
             total_readout =   offsets[scale] +  readout * fi[scale];
-            if ( do_debug_print)
+#ifdef DEBUG_APP_DSC1
+            if ( dsc == 1 )
+#endif
                 qDebug()<<"dsc" << dsc << "sensor "<< sensor << " scalefactor " << scale+1 << " readout " << readout*fi[scale] << "offsets" << offsets[scale] << " total_readout " << total_readout << " dac " << dac+1;
             CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scale+1 << "," << readout << "," << total_readout << "," << calibration << "," << temp_micro << ","<< tval << dac+1 << ",Y,A\n";
         }
         else
         {
             total_readout = readout * (scale + 1);
-            if ( do_debug_print)
+#ifdef DEBUG_APP_DSC1
+            if ( dsc == 1 )
+#endif
                 qDebug()<<"dsc" << dsc << "sensor "<< sensor << " scalefactor " << scale+1 << " readout " << readout << " total_readout " << total_readout;
             CsvFileStream << timestamp << "," << cmd_counter << "," << concentrator_counter << "," << dsc << "," << sensor << "," << scale+1 << "," << readout << "," << total_readout << "," << calibration << "," << temp_micro << ","<< tval << "," << dac+1 << ",Y,A\n";
         }
@@ -617,7 +623,6 @@ void ConcentratorWindow::on_StoreToSensors_pushButton_clicked()
     QPixmap redled (":/ledred.png");
     QPixmap greenled(":/ledgreen.png");
 
-        ui->statusbar->showMessage("Downloading update file to sensors");
         wait_reply_var = WAIT_REPLY_DOWNLOAD;
 
         ui->SensorInFlash_label->setPixmap(redled);
@@ -682,6 +687,23 @@ void ConcentratorWindow::on_SpecialString_pushButton_clicked()
     {
         qDebug()<<reply;
     }
+}
+
+void ConcentratorWindow::on_RequestInfo_pushButton_clicked()
+{
+    QByteArray reply;
+    QByteArray Command;
+    QByteArray line;
+    QByteArray sensor;
+
+        line = ui->GetInfoLine_comboBox->currentText().toUtf8();
+        sensor = ui->GetInfoSensor_comboBox->currentText().toUtf8();
+
+        Command = "<I "+line+" "+sensor+">";
+        if ( (reply = serial_tx(Command)) != "1" )
+        {
+            qDebug()<<reply;
+        }
 }
 
 void ConcentratorWindow::on_ReadParameters_pushButton_clicked()
@@ -753,8 +775,6 @@ void ConcentratorWindow::on_RequestVersionInfo_pushButton_clicked()
         if ( (reply = serial_tx(Command)) != "1" )
         {
             qDebug()<<reply;
-            reply.remove(0, 4);
-            ui->label_Sensor_VERSION->setText(reply);
         }
 }
 

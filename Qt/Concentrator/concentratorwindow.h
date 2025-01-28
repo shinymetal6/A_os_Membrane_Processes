@@ -46,8 +46,6 @@ private slots:
 
     void on_GetMap_pushButton_clicked();
 
-    void on_GetData_pushButton_clicked();
-
     void on_Scan_pushButton_clicked();
 
     void on_StartProgramSensors_pushButton_clicked();
@@ -59,8 +57,6 @@ private slots:
     void on_Special_pushButton_clicked();
 
     void on_SpecialString_pushButton_clicked();
-
-    void on_RequestInfo_pushButton_clicked();
 
     void on_ReadParameters_pushButton_clicked();
 

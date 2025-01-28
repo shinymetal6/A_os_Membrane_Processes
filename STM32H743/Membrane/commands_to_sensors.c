@@ -63,7 +63,6 @@ uint8_t sensors_send_discovery(void)
 		hw_send_uart_dma(HW_UART5,MembraneSystem.sensor_scratchbuf,6);
 		hw_send_uart_dma(HW_UART7,MembraneSystem.sensor_scratchbuf,6);
 		hw_send_uart_dma(HW_UART8,MembraneSystem.sensor_scratchbuf,6);
-
 		MembraneSystem.sensor_map_sensor_index++;
 		return 0;
 	}
